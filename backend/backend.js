@@ -274,13 +274,16 @@ app.get('/', (req, res) => {
 
 // Endpoint para obtener notificaciones no entregadas
 app.get('/api/notificaciones', async (req, res) => {
-  const notificaciones = await Notificacion.find({ entregado: false }).populate({
-    path: 'pedidoId',
-    populate: [
-      { path: 'usuarioId', select: 'nombre correo' },
-      { path: 'items.productoId', select: 'nombre precio' }
-    ]
-  });
+  const notificaciones = await Notificacion.find({ entregado: false })
+    .sort({ createdAt: -1 })
+    .limit(2)
+    .populate({
+      path: 'pedidoId',
+      populate: [
+        { path: 'usuarioId', select: 'nombre correo' },
+        { path: 'items.productoId', select: 'nombre precio' }
+      ]
+    });
   res.json(notificaciones);
 });
 

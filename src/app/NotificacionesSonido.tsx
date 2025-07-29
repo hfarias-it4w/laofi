@@ -15,7 +15,10 @@ export default function NotificacionesSonido() {
         const nueva = notifs[0];
         if (lastNotifId.current !== nueva._id) {
           lastNotifId.current = nueva._id;
-          audioRef.current?.play();
+          if (audioRef.current) {
+            audioRef.current.currentTime = 0;
+            audioRef.current.play();
+          }
         }
       }
     }
@@ -25,7 +28,7 @@ export default function NotificacionesSonido() {
 
   return (
     <>
-      <audio ref={audioRef} src="/sonido-notificacion.mp3" preload="auto" />
+      <audio ref={audioRef} src="/positive-notification.wav" preload="auto" />
     </>
   );
 }
