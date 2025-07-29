@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
 import NotificacionesSonido from "./NotificacionesSonido";
+import NavbarClient from "./NavbarClient";
+import SessionProviderWrapper from "./SessionProviderWrapper";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,38 +27,26 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="es">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-gradient-to-br from-blue-50 via-white to-pink-50 flex flex-col`}
       >
-        <NotificacionesSonido />
-        <nav className="bg-white shadow p-4 flex gap-6 mb-8">
-          <Link
-            href="/"
-            className="font-bold text-blue-700 hover:underline"
-          >
-            Comprar Café
-          </Link>
-          <Link
-            href="/clientes"
-            className="font-bold text-blue-700 hover:underline"
-          >
-            ABM Clientes
-          </Link>
-          <Link
-            href="/pedidos"
-            className="font-bold text-blue-700 hover:underline"
-          >
-            Ver Pedidos
-          </Link>
-          <Link
-            href="/productos"
-            className="font-bold text-blue-700 hover:underline"
-          >
-            ABM Productos
-          </Link>
-        </nav>
-        {children}
+        <SessionProviderWrapper>
+          <NotificacionesSonido />
+          <header className="w-full bg-white/80 backdrop-blur shadow-sm py-6 px-0 flex flex-col items-center mb-4 border-b">
+            <h1 className="text-3xl font-extrabold text-blue-700 tracking-tight mb-1">LaOfi Café</h1>
+            <span className="text-sm text-gray-500">¡Gestioná tu cafetería de forma simple y moderna!</span>
+          </header>
+          <NavbarClient />
+          <main className="flex-1 flex justify-center items-start">
+            <section className="w-full max-w-3xl bg-white/90 rounded-2xl shadow-lg p-8 mt-2 mb-8">
+              {children}
+            </section>
+          </main>
+          <footer className="w-full text-center text-xs text-gray-400 py-4 border-t bg-white/70 mt-auto">
+            © {new Date().getFullYear()} LaOfi Café — Hecho con <span className="text-pink-500">♥</span> por tu equipo
+          </footer>
+        </SessionProviderWrapper>
       </body>
     </html>
   );
