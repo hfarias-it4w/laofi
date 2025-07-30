@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
-import NotificacionesSonido from "./NotificacionesSonido";
 import NavbarClient from "./NavbarClient";
 import SessionProviderWrapper from "./SessionProviderWrapper";
 
@@ -32,7 +31,6 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-gradient-to-br from-blue-50 via-white to-pink-50 flex flex-col`}
       >
         <SessionProviderWrapper>
-          <NotificacionesSonido />
           <header className="w-full bg-white/80 backdrop-blur shadow-sm py-6 px-0 flex flex-col items-center mb-4 border-b">
             <h1 className="text-3xl font-extrabold text-blue-700 tracking-tight mb-1">LaOfi Café</h1>
             <span className="text-sm text-gray-500">¡Gestioná tu cafetería de forma simple y moderna!</span>

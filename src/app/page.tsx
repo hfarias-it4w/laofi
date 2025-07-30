@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 
 
 interface Usuario {
@@ -30,6 +30,7 @@ const METODOS_PAGO = [
 ];
 
 export default function Home() {
+  const audioRef = useRef<HTMLAudioElement>(null);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [usuarioId, setUsuarioId] = useState<string>("");
   const [productoId, setProductoId] = useState("");
@@ -88,13 +89,16 @@ export default function Home() {
           return;
         }
         setShowModal(false);
-        setShowConfirm(true);
+        // Reproducir sonido de confirmación
+        if (audioRef.current) {
+          audioRef.current.currentTime = 0;
+          audioRef.current.play();
+        }
+        // Redirigir a /pago-exitoso después de un pequeño delay para que suene
         setTimeout(() => {
-          setShowConfirm(false);
-          if (data.init_point) {
-            window.location.href = data.init_point;
-          }
-        }, 2000);
+          window.location.href = "/pago-exitoso";
+        }, 400);
+        return;
       } catch (err) {
         setMensaje(
           "Error al conectar con Mercado Pago: " +
@@ -112,13 +116,15 @@ export default function Home() {
     if (res.ok) {
       setCantidad(1); setComentario("");
       setShowModal(false);
-      setShowConfirm(true);
-      fetch("/api/pedidos")
-        .then((res) => res.json())
-        .then(setPedidos);
+      // Reproducir sonido de confirmación
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play();
+      }
+      // Redirigir a /pago-exitoso después de un pequeño delay para que suene
       setTimeout(() => {
-        setShowConfirm(false);
-      }, 2000);
+        window.location.href = "/pago-exitoso";
+      }, 400);
     } else {
       const err = await res.json();
       setMensaje(err.error || "Error al realizar pedido");
@@ -127,6 +133,7 @@ export default function Home() {
 
   return (
     <div className="max-w-3xl mx-auto p-4">
+      <audio ref={audioRef} src="/positive-notification.wav" preload="auto" />
       <h1 className="text-2xl font-bold mb-4">Productos disponibles</h1>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {productos.length === 0 && <div>No hay productos disponibles</div>}
@@ -218,16 +225,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* Modal de confirmación de pedido */}
-      {showConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-sm flex flex-col items-center">
-            <span className="text-green-600 text-5xl mb-4">✔️</span>
-            <div className="text-xl font-bold mb-2">¡Pedido realizado!</div>
-            <div className="text-gray-700">Tu pedido fue registrado correctamente.</div>
-          </div>
-        </div>
-      )}
+      {/* Modal de confirmación de pedido eliminado, ahora se redirige a /pago-exitoso */}
 
       <h2 className="text-xl font-bold mt-8 mb-2">Pedidos recientes</h2>
       <ul>
