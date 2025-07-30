@@ -1,4 +1,23 @@
+// Página personalizada de error de login para NextAuth
+"use client";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+
+export default function LoginErrorPage() {
+  const searchParams = useSearchParams();
+  const error = searchParams.get("error");
+  let message = "Ocurrió un error desconocido.";
+  if (error === "CredentialsSignin") {
+    message = "Credenciales incorrectas. Intenta de nuevo.";
+  }
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100vh" }}>
+      <h1>Error de inicio de sesión</h1>
+      <p>{message}</p>
+      <Link href="/login">Volver al login</Link>
+    </div>
+  );
+}import Link from "next/link";
 
 export default function ErrorPage({ searchParams }: { searchParams?: { error?: string } }) {
   const error = searchParams?.error;

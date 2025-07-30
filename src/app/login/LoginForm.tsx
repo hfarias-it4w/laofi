@@ -11,13 +11,11 @@ export default function LoginForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError("ERROR LOGIN");
     const res = await signIn("credentials", {
       redirect: false,
       email,
       password,
     });
-    setLoading(false);
     if (res?.ok) {
       window.location.href = "/";
     } else {

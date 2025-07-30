@@ -1,12 +1,10 @@
 
-import NextAuth from "next-auth";
+import NextAuth, { SessionStrategy } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { connectToDatabase, Usuario } from "@/lib/mongo";
-//import bcrypt from "bcryptjs";
 
 
 
-const handler = NextAuth({
+export const authOptions = {
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -15,55 +13,57 @@ const handler = NextAuth({
         password: { label: "Contraseña", type: "password" },
       },
       async authorize(credentials) {
-        await connectToDatabase();
-        // Buscar usuario por correo
-        const user = await Usuario.findOne({ correo: credentials?.email, activo: true });
-        console.log("Usuario encontrado:", user);
-        if (!user) return null;
-        // Comparar contraseña (en backend.js está como contraseñaHash, pero aquí asumimos texto plano para demo)
-        // Si usas hash, descomenta la línea de bcrypt y comenta la comparación directa
-        // const valid = await bcrypt.compare(credentials?.password || "", user.contraseñaHash);
-        const valid = credentials?.password === user.contraseñaHash;
-        if (!valid) return null;
-        // NextAuth espera que el usuario tenga id:string
-        return {
-          id: user._id.toString(),
-          name: user.nombre,
-          email: user.correo,
-          role: user.rol,
-        };
+        console.log("[NextAuth] Credenciales recibidas:", credentials);
+        // Usuario de prueba hardcodeado
+        if (
+          credentials?.email === "test@laofi.com" &&
+          credentials?.password === "1234"
+        ) {
+          console.log("[NextAuth] Login exitoso");
+          return {
+            id: "1",
+            name: "Usuario Test",
+            email: "test@laofi.com",
+            role: "admin",
+          };
+        }
+        console.log("[NextAuth] Login fallido");
+        return null;
       },
     }),
   ],
+  session: {
+    strategy: "jwt" as SessionStrategy,
+  },
   pages: {
     signIn: "/login",
-    error: "/login/error", // o la ruta que prefieras
+    //error: "/login/error", // Pantalla personalizada de error
   },
-  });
-  /*,
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user }: { token: any; user?: any }) {
       if (user) {
         token.role = user.role;
+        token.id = user.id;
+        token.email = user.email;
+        token.name = user.name;
       }
       return token;
     },
-    async session({ session, token }) {
+    async session({ session, token }: { session: import("next-auth").Session, token: any }) {
       if (token && session.user) {
         (session.user as any).role = token.role;
+        (session.user as any).id = token.id;
+        (session.user as any).email = token.email;
+        (session.user as any).name = token.name;
       }
       return session;
     },
   },
-  pages: {
-    signIn: "/login",
-  },
-  session: {
-    strategy: "jwt",
-  },
-});
+};
+
+const handler = NextAuth(authOptions);
 
 // Export both GET and POST handlers for NextAuth to support both authentication and session endpoints.
 // NextAuth expects both methods to be handled by the same function in the route handler.
 export { handler as GET, handler as POST };
-*/
+
