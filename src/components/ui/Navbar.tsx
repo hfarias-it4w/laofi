@@ -6,7 +6,8 @@ export default function Navbar() {
   const { data: session } = useSession();
   // Suponiendo que el rol está en session.user.role
   const role = session?.user?.role;
-
+  console.log("Navbar role:", role);
+  
   // Links base para todos
   const links = [
     {

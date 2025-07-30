@@ -4,6 +4,8 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { connectToDatabase, Usuario } from "@/lib/mongo";
 //import bcrypt from "bcryptjs";
 
+
+
 const handler = NextAuth({
   providers: [
     CredentialsProvider({
@@ -16,6 +18,7 @@ const handler = NextAuth({
         await connectToDatabase();
         // Buscar usuario por correo
         const user = await Usuario.findOne({ correo: credentials?.email, activo: true });
+        console.log("Usuario encontrado:", user);
         if (!user) return null;
         // Comparar contraseña (en backend.js está como contraseñaHash, pero aquí asumimos texto plano para demo)
         // Si usas hash, descomenta la línea de bcrypt y comenta la comparación directa
@@ -32,6 +35,12 @@ const handler = NextAuth({
       },
     }),
   ],
+  pages: {
+    signIn: "/login",
+    error: "/login/error", // o la ruta que prefieras
+  },
+  });
+  /*,
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
@@ -57,3 +66,4 @@ const handler = NextAuth({
 // Export both GET and POST handlers for NextAuth to support both authentication and session endpoints.
 // NextAuth expects both methods to be handled by the same function in the route handler.
 export { handler as GET, handler as POST };
+*/
