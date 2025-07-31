@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route";
 import Pedido from "@/models/Pedido";
+import { getSocketServer } from "@/lib/socketServer";
 import { dbConnect } from "@/lib/mongodb";
 
 export async function GET(req: NextRequest) {
@@ -45,6 +46,11 @@ export async function POST(req: NextRequest) {
     ...body,
     user: user.role === "admin" && body.user ? body.user : user._id,
   };
+    // Notificar a admins por socket.io
+    try {
+      // @ts-ignore
+      getSocketServer(res).emit("nuevo-pedido");
+    } catch {}
   try {
     const pedido = await Pedido.create(pedidoData);
     return NextResponse.json(pedido, { status: 201 });

@@ -2,6 +2,7 @@
 
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import AdminNotificationListener from "@/app/components/AdminNotificationListener";
 import "./globals.css";
 import { IoMdMenu } from "react-icons/io";
 
@@ -101,6 +102,7 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white min-h-dvh flex flex-col`}>
         <AuthProvider>
           <HeaderWithAccount />
+          <AdminNotificationListener />
           <main className="flex flex-col flex-grow w-full">{children}</main>
         </AuthProvider>
         <footer className="w-full text-center py-4 mt-auto" style={{ background: '#3A3A3A' }}>
