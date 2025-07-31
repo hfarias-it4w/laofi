@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { FaCoffee } from "react-icons/fa";
 import { FaHistory } from "react-icons/fa";
+import { useRouter } from "next/navigation";
 
 type UserWithRole = {
   name?: string | null;
@@ -15,6 +16,7 @@ type UserWithRole = {
 export default function Home() {
   const { data: session } = useSession();
   const user = session?.user as UserWithRole | undefined;
+  const router = useRouter();
 
   return (
     <div className="flex flex-col items-center flex-grow py-4 px-4 bg-white">
@@ -37,14 +39,21 @@ export default function Home() {
           <i className="text-4xl mb-2" aria-label="Taza de café"> <FaCoffee /></i> 
           Pedir café
         </a>
-        <a
-          href="/pedidos/historial"
+        <button
+          type="button"
           className="flex flex-col items-center justify-center flex-1 bg-[#3A3A3A] hover:bg-[#222] text-white rounded-xl shadow-lg py-8 px-6 transition-colors text-center text-xl font-semibold gap-3"
+          onClick={() => {
+            if (user?.role === "admin") {
+              router.push("/pedidos");
+            } else {
+              router.push("/pedidos/historial");
+            }
+          }}
         >
           {/* Favicon reloj (emoji) */}
           <span className="text-4xl mb-2" role="img" aria-label="Reloj"><FaHistory /></span>
           Historial de pedidos
-        </a>
+        </button>
       </div>
     </div>
   );

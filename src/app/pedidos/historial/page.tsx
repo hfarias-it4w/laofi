@@ -2,6 +2,8 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { BsFillExclamationOctagonFill } from "react-icons/bs";
 
 type PedidoProducto = {
   nombre: string;
@@ -24,6 +26,7 @@ const METODOS_PAGO = [
 
 export default function HistorialPedidos() {
   const { data: session, status } = useSession();
+  const router = useRouter();
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -42,7 +45,18 @@ export default function HistorialPedidos() {
   }, [status]);
 
   if (status === "loading") return <div className="text-center mt-10 text-gray-500">Cargando sesión...</div>;
-  if (!session) return <div className="text-red-600 text-center mt-10">Debes iniciar sesión para ver tu historial.</div>;
+  if (!session) return (
+    <div className="flex flex-col items-center mt-10">
+      <div className="text-red-600 text-4xl mb-6"><BsFillExclamationOctagonFill /></div>
+      <div className="text-red-600 text-xl mb-6">Debes iniciar sesión para ver tu historial.</div>
+      <button
+        className="bg-[#13B29F] hover:bg-[#119e8d] text-white rounded-xl py-3 px-6 text-lg font-semibold transition-colors"
+        onClick={() => router.push("/login")}
+      >
+        Ir al login
+      </button>
+    </div>
+  );
 
   return (
     <div className="max-w-2xl mx-auto mt-10">

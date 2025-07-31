@@ -2,6 +2,8 @@
 import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { BsFillExclamationOctagonFill } from "react-icons/bs";
+
 
 export default function MisDatos() {
   const router = useRouter();
@@ -55,7 +57,18 @@ export default function MisDatos() {
   };
 
   if (!user) {
-    return <div className="text-center mt-10 text-gray-500">Cargando datos de usuario...</div>;
+    return (
+      <div className="flex flex-col items-center mt-10">
+        <div className="text-red-600 text-4xl mb-6"><BsFillExclamationOctagonFill /></div>
+        <div className="text-red-600 text-xl mb-6">Acceso denegado</div>
+        <button
+          className="bg-[#13B29F] hover:bg-[#119e8d] text-white rounded-xl py-3 px-6 text-lg font-semibold transition-colors"
+          onClick={() => router.push("/login")}
+        >
+          Ir al login
+        </button>
+      </div>
+    );
   }
 
   return (

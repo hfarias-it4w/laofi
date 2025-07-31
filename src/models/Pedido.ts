@@ -25,7 +25,7 @@ const PedidoSchema = new Schema<IPedido>({
       nombre: { type: String, required: true },
     },
   ],
-  metodoPago: { type: String, enum: ['mercadopago', 'modo', 'efectivo'], required: true },
+  metodoPago: { type: String, enum: ['mercadopago', 'efectivo'], required: true },
   total: { type: Number, required: true },
   estado: { type: String, default: "pendiente" },
   createdAt: { type: Date, default: Date.now },

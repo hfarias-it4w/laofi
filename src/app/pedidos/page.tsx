@@ -1,6 +1,9 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { BsFillExclamationOctagonFill } from "react-icons/bs";
 
 
 interface Pedido {
@@ -11,7 +14,7 @@ interface Pedido {
     cantidad: number;
     precio: number;
   }>;
-  metodoPago: "mercadopago" | "modo" | "efectivo";
+  metodoPago: "mercadopago" | "efectivo";
   total: number;
   estado: string;
   createdAt: string;
@@ -19,21 +22,26 @@ interface Pedido {
 
 const METODOS_PAGO = [
   { value: "mercadopago", label: "Mercado Pago" },
-  { value: "modo", label: "MODO" },
   { value: "efectivo", label: "Efectivo" },
 ];
 
 export default function PedidosPage() {
+  const { data: session } = useSession();
+  const user = session?.user;
+  const router = useRouter();
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [filtroEstado, setFiltroEstado] = useState("");
   const [filtroPago, setFiltroPago] = useState("");
   const [busqueda, setBusqueda] = useState("");
+  const [fechaDesde, setFechaDesde] = useState("");
+  const [fechaHasta, setFechaHasta] = useState("");
 
   useEffect(() => {
+    if (!user) return;
     fetch("/api/pedidos")
       .then((res) => res.json())
       .then(setPedidos);
-  }, []);
+  }, [user]);
 
 
   const actualizarEstado = async (id: string, nuevoEstado: string) => {
@@ -68,8 +76,26 @@ export default function PedidosPage() {
          p.user?.email?.toLowerCase().includes(busqueda.toLowerCase()) ||
          p.productos.some(item => item.nombre?.toLowerCase().includes(busqueda.toLowerCase())))
       : true;
-    return coincideEstado && coincidePago && coincideBusqueda;
+    const fechaPedido = new Date(p.createdAt);
+    const coincideDesde = fechaDesde ? fechaPedido >= new Date(fechaDesde) : true;
+    const coincideHasta = fechaHasta ? fechaPedido <= new Date(fechaHasta + 'T23:59:59') : true;
+    return coincideEstado && coincidePago && coincideBusqueda && coincideDesde && coincideHasta;
   });
+
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center mt-10">
+        <div className="text-red-600 text-4xl mb-6"><BsFillExclamationOctagonFill /></div>
+        <div className="text-red-600 text-xl mb-6">Acceso denegado</div>
+        <button
+          className="bg-[#13B29F] hover:bg-[#119e8d] text-white rounded-xl py-3 px-6 text-lg font-semibold transition-colors"
+          onClick={() => router.push("/login")}
+        >
+          Ir al login
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto p-4">
@@ -103,6 +129,20 @@ export default function PedidosPage() {
             </option>
           ))}
         </select>
+        <input
+          type="date"
+          className="border p-2 rounded"
+          value={fechaDesde}
+          onChange={e => setFechaDesde(e.target.value)}
+          placeholder="Desde"
+        />
+        <input
+          type="date"
+          className="border p-2 rounded"
+          value={fechaHasta}
+          onChange={e => setFechaHasta(e.target.value)}
+          placeholder="Hasta"
+        />
       </div>
       <table className="w-full border text-sm">
         <thead>
@@ -162,6 +202,11 @@ export default function PedidosPage() {
       {pedidosFiltrados.length === 0 && (
         <div className="text-center text-gray-500 mt-4">
           No hay pedidos para mostrar.
+        </div>
+      )}
+      {pedidosFiltrados.length > 0 && (
+        <div className="text-right mt-4 text-lg font-bold">
+          Total general: ${pedidosFiltrados.reduce((acc, p) => acc + (Number(p.total) || 0), 0)}
         </div>
       )}
     </div>

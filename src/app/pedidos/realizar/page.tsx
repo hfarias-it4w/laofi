@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState, useRef } from "react";
+import { useSession, signIn } from "next-auth/react";
 
 
 
@@ -15,6 +16,7 @@ const METODOS_PAGO = [
 ];
 
 export default function Home() {
+  const { data: session } = useSession();
   const audioRef = useRef<HTMLAudioElement>(null);
   // Ya no se selecciona usuario, el usuario se toma de la sesión
   const [productoId, setProductoId] = useState("");
@@ -114,7 +116,19 @@ export default function Home() {
         {productos.length === 0 && <div className="col-span-2 text-center text-gray-500">No hay productos disponibles</div>}
         {productos.map((p) => (
           <div key={p._id} className="rounded-xl shadow-lg p-6 flex flex-col items-center bg-white border border-gray-100">
-            <div className="font-semibold text-lg mb-1">{p.name}</div>
+            {p.image ? (
+              <img
+                src={p.image}
+                alt={p.name}
+                className="w-28 h-28 object-cover rounded-lg mb-3 border border-gray-200 shadow-sm"
+                style={{ background: '#f3f3f3' }}
+              />
+            ) : (
+              <div className="w-28 h-28 flex items-center justify-center bg-gray-100 text-gray-400 rounded-lg mb-3 border border-gray-200">
+                Sin imagen
+              </div>
+            )}
+            <div className="font-semibold text-lg mb-1 text-center">{p.name}</div>
             <div className="text-gray-700 mb-4 text-xl font-bold">${p.price}</div>
             <button
               className="bg-[#13B29F] hover:bg-[#119e8d] text-white rounded-xl py-3 px-6 text-lg font-semibold transition-colors"
@@ -143,36 +157,65 @@ export default function Home() {
             >
               ×
             </button>
-            <h2 className="text-xl font-bold mb-4 text-[#3A3A3A]">Pedir: {selectedProducto?.name}</h2>
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full">
-              <input
-                className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#13B29F] text-lg"
-                type="number"
-                min={1}
-                value={cantidad}
-                onChange={e => setCantidad(Number(e.target.value))}
-                required
-                placeholder="Cantidad"
+            {selectedProducto?.image ? (
+              <img
+                src={selectedProducto.image}
+                alt={selectedProducto.name}
+                className="w-32 h-32 object-cover rounded-lg mb-4 border border-gray-200 shadow-sm"
+                style={{ background: '#f3f3f3' }}
               />
-              <select
-                className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#13B29F] text-lg"
-                value={metodoPago}
-                onChange={(e) => setMetodoPago(e.target.value)}
-                required
-              >
-                {METODOS_PAGO.map((m) => (
-                  <option key={m.value} value={m.value}>
-                    {m.label}
-                  </option>
-                ))}
-              </select>
-              <button
-                className="bg-[#13B29F] hover:bg-[#119e8d] text-white rounded-xl py-3 px-6 text-lg font-semibold transition-colors"
-                type="submit"
-              >
-                Confirmar pedido
-              </button>
-            </form>
+            ) : (
+              <div className="w-32 h-32 flex items-center justify-center bg-gray-100 text-gray-400 rounded-lg mb-4 border border-gray-200">
+                Sin imagen
+              </div>
+            )}
+            <h2 className="text-2xl font-bold mb-2 text-[#3A3A3A] text-center">{selectedProducto?.name}</h2>
+            {session ? (
+              <>
+                <p className="mb-4 text-gray-700 text-center">Selecciona la cantidad y el método de pago para tu pedido.</p>
+                <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full">
+                  <label className="text-sm text-gray-600 mb-1" htmlFor="cantidad-input">Cantidad</label>
+                  <input
+                    id="cantidad-input"
+                    className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#13B29F] text-lg"
+                    type="number"
+                    min={1}
+                    value={cantidad}
+                    onChange={e => setCantidad(Number(e.target.value))}
+                    required
+                    placeholder="Cantidad"
+                  />
+                  <select
+                    className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#13B29F] text-lg"
+                    value={metodoPago}
+                    onChange={(e) => setMetodoPago(e.target.value)}
+                    required
+                  >
+                    {METODOS_PAGO.map((m) => (
+                      <option key={m.value} value={m.value}>
+                        {m.label}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    className="bg-[#13B29F] hover:bg-[#119e8d] text-white rounded-xl py-3 px-6 text-lg font-semibold transition-colors"
+                    type="submit"
+                  >
+                    Confirmar pedido
+                  </button>
+                </form>
+              </>
+            ) : (
+              <div className="flex flex-col items-center w-full">
+                <button
+                  className="bg-[#13B29F] hover:bg-[#119e8d] text-white rounded-xl py-3 px-6 text-lg font-semibold transition-colors mb-2"
+                  onClick={() => signIn()}
+                >
+                  Iniciar sesión para pedir
+                </button>
+                <p className="text-gray-600 text-center">Debes iniciar sesión para realizar un pedido.</p>
+              </div>
+            )}
             {mensaje && (
               <div className="mt-4 text-blue-700 w-full text-center">{mensaje}</div>
             )}
