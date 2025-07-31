@@ -91,7 +91,7 @@ export default function Home() {
         audioRef.current.play();
       }
       setTimeout(() => {
-        window.location.href = "pago-exitoso";
+        window.location.href = "pedido-exitoso";
       }, 400);
     } else {
       const err = await res.json();

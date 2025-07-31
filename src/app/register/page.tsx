@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+
 export default function RegisterPage() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -32,44 +33,45 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen">
-      <form onSubmit={handleSubmit} className="bg-white p-8 rounded shadow-md w-80">
-        <h1 className="text-2xl mb-4">Registro de usuario</h1>
-        <input
-          type="text"
-          placeholder="Usuario"
-          value={username}
-          onChange={e => setUsername(e.target.value)}
-          className="w-full p-2 mb-4 border rounded"
-          required
-        />
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          className="w-full p-2 mb-4 border rounded"
-          required
-        />
-        <input
-          type="text"
-          placeholder="Nombre"
-          value={name}
-          onChange={e => setName(e.target.value)}
-          className="w-full p-2 mb-4 border rounded"
-        />
-        <input
-          type="password"
-          placeholder="Contraseña"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          className="w-full p-2 mb-4 border rounded"
-          required
-        />
-        {error && <div className="text-red-500 mb-2">{error}</div>}
-        {success && <div className="text-green-600 mb-2">{success}</div>}
-        <button type="submit" className="w-full bg-blue-600 text-white p-2 rounded">Registrar</button>
-      </form>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#f5f6fa] to-[#e3e6ed] font-sans">
+      <div className="flex flex-col items-center w-full max-w-md px-4">
+        <img src="/logolaofi.svg" alt="La Ofi Logo" className="h-16 mb-6 mt-2 drop-shadow-lg" />
+        <form onSubmit={handleSubmit} className="bg-white/90 backdrop-blur-md p-8 rounded-2xl shadow-xl w-full border border-gray-100">
+          <h1 className="text-2xl font-bold text-center text-gray-800 mb-6 tracking-tight">Registro de usuario</h1>
+          <label className="block text-xs text-gray-600 mb-1" htmlFor="name">Nombre</label>
+          <input
+            id="name"
+            type="text"
+            placeholder="Nombre"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            className="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+          />
+          <label className="block text-xs text-gray-600 mb-1" htmlFor="email">Email</label>
+          <input
+            id="email"
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            className="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+            required
+          />
+          <label className="block text-xs text-gray-600 mb-1" htmlFor="password">Contraseña</label>
+          <input
+            id="password"
+            type="password"
+            placeholder="Contraseña"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            className="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+            required
+          />
+          {error && <div className="text-red-500 mb-3 text-center font-medium animate-pulse">{error}</div>}
+          {success && <div className="text-green-600 mb-3 text-center font-medium animate-pulse">{success}</div>}
+          <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-lg font-semibold shadow transition">Registrar</button>
+        </form>
+      </div>
     </div>
   );
 }

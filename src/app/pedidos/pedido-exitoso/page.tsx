@@ -3,9 +3,8 @@ import React from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { BsFillExclamationOctagonFill } from "react-icons/bs";
-import { CgSandClock } from "react-icons/cg";
 
-export default function PagoPendiente() {
+export default function PedidoExitoso() {
   const { data: session } = useSession();
   const router = useRouter();
   if (!session) {
@@ -28,15 +27,14 @@ export default function PagoPendiente() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#f5f6fa] to-[#e3e6ed] font-sans">
       <div className="flex flex-col items-center w-full max-w-md px-4">
         <div className="bg-white/90 backdrop-blur-md p-8 rounded-2xl shadow-xl w-full border border-gray-100 flex flex-col items-center text-center">
-          <span className="text-yellow-500 text-6xl mb-4"><CgSandClock /></span>
-          <h1 className="text-3xl font-bold text-yellow-600 mb-2">Pago Pendiente</h1>
-          <p className="text-lg text-gray-700 mb-4">Tu pago está pendiente de confirmación. Te avisaremos cuando se acredite.</p>
-          <a
-            href="/pedidos/realizar"
-            className="mt-4 px-6 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition font-semibold"
-          >
-            Volver a los pedidos
-          </a>
+          <span className="text-green-600 text-6xl mb-4">✔️</span>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">¡Pedido exitoso!</h1>
+          <p className="text-lg text-gray-700 mb-4">
+           <br />
+            Acercate a recepción a realizar el pago para que podamos preparar tu pedido.<br /><br />
+            ¡Gracias!
+          </p>
+          <a href="/" className="mt-4 text-[#13B29F] hover:underline font-semibold">Volver al inicio</a>
         </div>
       </div>
     </div>

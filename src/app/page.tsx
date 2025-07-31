@@ -25,9 +25,13 @@ export default function Home() {
 
       {/* Mensaje de bienvenida */}
       <h1 className="text-2xl font-bold text-[#3A3A3A] mb-2">Hola, {user?.name || user?.email || 'Visitante'}!</h1>
-
-      {/* Mensaje de bienvenida */}
-      <h1 className="text-2xl font-bold text-[#3A3A3A] mb-2">Rol: {user?.role}</h1>
+      
+      {/* Ingresar a la app */}
+      {!user ? (
+        <div className="mb-4 text-lg text-[#3A3A3A]">
+          <span> <a href="/login" className="text-[#13B29F] hover:underline font-semibold">Inicia sesión</a> para ver tus pedidos</span>
+        </div>
+      ) : null}
 
       {/* Botones grandes */}
       <div className="flex flex-col sm:flex-row gap-6 mt-6 mb-10 w-full max-w-md justify-center">
