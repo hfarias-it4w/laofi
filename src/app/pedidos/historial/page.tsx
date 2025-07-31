@@ -74,12 +74,16 @@ export default function HistorialPedidos() {
             .reverse()
             .map((p) => {
               const item = p.productos[0];
+              const totalPrecio = typeof item?.precio === "number" && typeof item?.cantidad === "number"
+                ? item.precio * item.cantidad
+                : item?.precio;
+              const metodoPagoLabel = METODOS_PAGO.find((m) => m.value === p.metodoPago)?.label || p.metodoPago;
               return (
                 <li key={p._id} className="border-b py-2">
                   <span className="font-semibold">{p.user?.name || p.user?.email || "-"}</span> pidió {item?.cantidad} x {item?.nombre}
-                  {typeof item?.precio === "number" && <span> (${item.precio})</span>} - {" "}
-                  <span>{METODOS_PAGO.find((m) => m.value === p.metodoPago)?.label}</span> {" "}
-                  <span className="text-xs text-gray-500">
+                  {typeof item?.precio === "number" && <span> (${totalPrecio})</span>}
+                  <span className="ml-2 text-sm text-gray-700">[Pagó con: {metodoPagoLabel}]</span>
+                  <span className="ml-2 text-xs text-gray-500">
                     ({new Date(p.createdAt).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" })} {new Date(p.createdAt).toLocaleTimeString()})
                   </span>
                 </li>
