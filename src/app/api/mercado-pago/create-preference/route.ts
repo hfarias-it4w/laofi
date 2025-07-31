@@ -1,4 +1,3 @@
-
 import { NextResponse } from 'next/server';
 import Pedido from '../../../../models/Pedido';
 import { dbConnect } from '../../../../lib/mongodb';
@@ -31,10 +30,19 @@ export async function POST(req: Request) {
       unit_price: item.precio,
     }));
 
-    const payload: any = { items };
-    if (external_reference) {
-      payload.external_reference = external_reference;
-    }
+    // Asegurarse de que la URL de success esté bien formada y no vacía
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL?.replace(/\/$/, '') || "https://laofi.co";
+    console.log('Base URL:', baseUrl);
+    const payload: any = {
+      items,
+      external_reference,
+      back_urls: {
+        success: `${baseUrl}/pedidos/pago-exitoso`,
+        failure: `${baseUrl}/pedidos/pago-cancelado`,
+        pending: `${baseUrl}/pedidos/pago-pendiente`,
+      },
+      auto_return: "approved",
+    };
 
     const res = await fetch('https://api.mercadopago.com/checkout/preferences', {
       method: 'POST',
