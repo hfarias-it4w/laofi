@@ -2,22 +2,23 @@
 
 import React, { useEffect, useState } from "react";
 
+
 interface Pedido {
   _id: string;
-  usuarioId: { nombre: string; correo: string };
-  items: Array<{
-    productoId: { _id: string; nombre: string; precio: number; descripcion?: string };
+  user?: { name?: string; email?: string };
+  productos: Array<{
+    nombre: string;
     cantidad: number;
-    comentario?: string;
+    precio: number;
   }>;
-  metodoPago: string;
+  metodoPago: "mercadopago" | "modo" | "efectivo";
+  total: number;
   estado: string;
-  notificado: boolean;
   createdAt: string;
 }
 
 const METODOS_PAGO = [
-  { value: "mercado_pago", label: "Mercado Pago" },
+  { value: "mercadopago", label: "Mercado Pago" },
   { value: "modo", label: "MODO" },
   { value: "efectivo", label: "Efectivo" },
 ];
@@ -27,22 +28,19 @@ export default function PedidosPage() {
   const [filtroEstado, setFiltroEstado] = useState("");
   const [filtroPago, setFiltroPago] = useState("");
   const [busqueda, setBusqueda] = useState("");
-  const [productos, setProductos] = useState<any[]>([]);
 
   useEffect(() => {
     fetch("/api/pedidos")
       .then((res) => res.json())
       .then(setPedidos);
-    fetch("/api/productos")
-      .then((res) => res.json())
-      .then(setProductos);
   }, []);
 
+
   const actualizarEstado = async (id: string, nuevoEstado: string) => {
-    await fetch(`/api/pedidos/${id}`, {
+    await fetch(`/api/pedidos`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ estado: nuevoEstado }),
+      body: JSON.stringify({ _id: id, estado: nuevoEstado }),
     });
     fetch("/api/pedidos").then((res) => res.json()).then(setPedidos);
   };
@@ -50,10 +48,10 @@ export default function PedidosPage() {
   const eliminarPedido = async (id: string) => {
     if (!window.confirm("¿Seguro que deseas eliminar este pedido?")) return;
     try {
-      const res = await fetch(`/api/pedidos/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/pedidos?id=${id}`, { method: "DELETE" });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        alert(err.error || "Error al eliminar el pedido");
+        alert(err.message || "Error al eliminar el pedido");
         return;
       }
       fetch("/api/pedidos").then((res) => res.json()).then(setPedidos);
@@ -66,8 +64,9 @@ export default function PedidosPage() {
     const coincideEstado = filtroEstado ? p.estado === filtroEstado : true;
     const coincidePago = filtroPago ? p.metodoPago === filtroPago : true;
     const coincideBusqueda = busqueda
-      ? p.usuarioId?.nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
-        p.items.some(item => item.productoId?.nombre?.toLowerCase().includes(busqueda.toLowerCase()))
+      ? (p.user?.name?.toLowerCase().includes(busqueda.toLowerCase()) ||
+         p.user?.email?.toLowerCase().includes(busqueda.toLowerCase()) ||
+         p.productos.some(item => item.nombre?.toLowerCase().includes(busqueda.toLowerCase())))
       : true;
     return coincideEstado && coincidePago && coincideBusqueda;
   });
@@ -111,6 +110,7 @@ export default function PedidosPage() {
             <th className="p-2 border">Usuario</th>
             <th className="p-2 border">Productos</th>
             <th className="p-2 border">Pago</th>
+            <th className="p-2 border">Total</th>
             <th className="p-2 border">Estado</th>
             <th className="p-2 border">Fecha</th>
             <th className="p-2 border">Acciones</th>
@@ -119,23 +119,20 @@ export default function PedidosPage() {
         <tbody>
           {pedidosFiltrados.map((p) => (
             <tr key={p._id} className="border-b">
-              <td className="p-2 border">{p.usuarioId?.nombre}</td>
+              <td className="p-2 border">{p.user?.name || p.user?.email || '-'}</td>
               <td className="p-2 border">
                 <ul>
-                  {p.items.map((item, idx) => (
+                  {p.productos.map((item, idx) => (
                     <li key={idx}>
-                      {item.cantidad} x {item.productoId?.nombre || 'Producto'}
-                      {item.comentario && <span> ({item.comentario})</span>}
+                      {item.cantidad} x {item.nombre} <span className="text-gray-500">${item.precio}</span>
                     </li>
                   ))}
                 </ul>
               </td>
               <td className="p-2 border">
-                {(() => {
-                  const m = METODOS_PAGO.find((m) => m.value === p.metodoPago || m.value.replace('_', '') === p.metodoPago);
-                  return m ? m.label : p.metodoPago;
-                })()}
+                {METODOS_PAGO.find((m) => m.value === p.metodoPago)?.label || p.metodoPago}
               </td>
+              <td className="p-2 border font-semibold">${p.total}</td>
               <td className="p-2 border">
                 <select
                   value={p.estado}

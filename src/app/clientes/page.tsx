@@ -1,92 +1,239 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import { useSession } from "next-auth/react";
+import { useEffect, useState } from "react";
 
-interface Usuario {
-  _id: string;
-  nombre: string;
-  correo: string;
-  rol: string;
-  activo: boolean;
-}
+export default function ClientesAdmin() {
+  const { data: session, status } = useSession();
+  const user = session?.user as { role?: string } | undefined;
+  const [clientes, setClientes] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    _id: "",
+    // name ya está definido arriba
+    email: "",
+    name: "",
+    role: "user",
+    password: ""
+  });
+  const [editMode, setEditMode] = useState(false);
 
-export default function UsuariosPage() {
-  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
-  const [nombre, setNombre] = useState('');
-  const [correo, setCorreo] = useState('');
-  const [rol, setRol] = useState('cliente');
-  const [activo, setActivo] = useState(true);
-  const [contraseña, setContraseña] = useState('');
-  const [editId, setEditId] = useState<string|null>(null);
+  // Obtener clientes
+  const fetchClientes = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/clientes");
+      if (!res.ok) throw new Error("Error al obtener usuarios");
+      const data = await res.json();
+      setClientes(data);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    fetch('/api/usuarios')
-      .then(res => res.json())
-      .then(setUsuarios);
-  }, []);
+    if (user?.role === "admin") fetchClientes();
+    // eslint-disable-next-line
+  }, [user]);
 
+  // Alta o edición
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editId) {
-      await fetch(`/api/usuarios/${editId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nombre, correo, rol, activo })
-      });
-    } else {
-      await fetch('/api/usuarios', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nombre, correo, contraseñaHash: contraseña, rol, activo })
-      });
+    setLoading(true);
+    setError(null);
+    try {
+      let res;
+      if (editMode) {
+        res = await fetch("/api/clientes", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form)
+        });
+      } else {
+        // Alta: POST a /api/register
+        res = await fetch("/api/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form)
+        });
+      }
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Error en la operación");
+      }
+      setForm({ _id: "", name: "", email: "", role: "user", password: "" });
+      setEditMode(false);
+      fetchClientes();
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
     }
-    setNombre(''); setCorreo(''); setRol('cliente'); setActivo(true); setContraseña(''); setEditId(null);
-    fetch('/api/usuarios').then(res => res.json()).then(setUsuarios);
   };
 
-  const handleEdit = (usuario: Usuario) => {
-    setEditId(usuario._id);
-    setNombre(usuario.nombre);
-    setCorreo(usuario.correo);
-    setRol(usuario.rol);
-    setActivo(usuario.activo);
+  // Eliminar
+  const handleDelete = async (_id: string) => {
+    if (!window.confirm("¿Seguro que deseas eliminar este usuario?")) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/clientes", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ _id })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Error al eliminar");
+      }
+      fetchClientes();
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDelete = async (id: string) => {
-    await fetch(`/api/usuarios/${id}`, { method: 'DELETE' });
-    fetch('/api/usuarios').then(res => res.json()).then(setUsuarios);
+  // Editar
+  const handleEdit = (cliente: any) => {
+    setForm({ ...cliente, password: "" });
+    setEditMode(true);
   };
+
+  if (status === "loading") {
+    return <div className="text-center mt-10 text-gray-500">Cargando sesión...</div>;
+  }
+  if (!user || user.role !== "admin") {
+    return <div className="text-red-600 text-center mt-10">Acceso denegado</div>;
+  }
 
   return (
-    <div className="max-w-xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Usuarios</h1>
-      <form onSubmit={handleSubmit} className="mb-4 space-y-2">
-        <input className="border p-2 w-full" placeholder="Nombre" value={nombre} onChange={e => setNombre(e.target.value)} required />
-        <input className="border p-2 w-full" placeholder="Correo" value={correo} onChange={e => setCorreo(e.target.value)} required />
-        {!editId && (
-          <input className="border p-2 w-full" placeholder="Contraseña" value={contraseña} onChange={e => setContraseña(e.target.value)} required />
-        )}
-        <select className="border p-2 w-full" value={rol} onChange={e => setRol(e.target.value)} required>
-          <option value="cliente">Cliente</option>
-          <option value="admin">Admin</option>
-        </select>
-        <label className="flex items-center gap-2">
-          <input type="checkbox" checked={activo} onChange={e => setActivo(e.target.checked)} /> Activo
-        </label>
-        <button className="bg-blue-600 text-white px-4 py-2 rounded" type="submit">{editId ? 'Actualizar' : 'Agregar'}</button>
-        {editId && <button type="button" className="ml-2 text-gray-600" onClick={() => { setEditId(null); setNombre(''); setCorreo(''); setRol('cliente'); setActivo(true); setContraseña(''); }}>Cancelar</button>}
+    <div className="flex flex-col items-center flex-grow py-4 px-4 bg-white min-h-screen">
+      {/* Logo laofi en el centro */}
+      <img src="/logolaofi.svg" alt="Logo Laofi" className="h-20 w-auto mb-6 mt-10" />
+      <h1 className="text-2xl font-bold text-[#3A3A3A] mb-2">Administrador de Clientes</h1>
+      <p className="mb-6 text-gray-700">Aquí podrás gestionar los clientes del sistema.</p>
+
+      {/* Formulario alta/edición */}
+      <form onSubmit={handleSubmit} className="flex flex-col items-center w-full max-w-2xl bg-white rounded-xl shadow-lg px-8 py-8 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+          <div className="flex flex-col">
+            <label className="text-xs text-gray-600 mb-1" htmlFor="nombre-input">Nombre</label>
+            <input
+              id="nombre-input"
+              type="text"
+              placeholder="Nombre"
+              className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#13B29F] text-lg"
+              value={form.name}
+              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              required
+              disabled={editMode}
+            />
+          </div>
+          <div className="flex flex-col">
+            <label className="text-xs text-gray-600 mb-1" htmlFor="email-input">Email</label>
+            <input
+              id="email-input"
+              type="email"
+              placeholder="Email"
+              className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#13B29F] text-lg"
+              value={form.email}
+              onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+              required
+            />
+          </div>
+          <div className="flex flex-col">
+            <label className="text-xs text-gray-600 mb-1" htmlFor="rol-input">Rol</label>
+            <select
+              id="rol-input"
+              className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#13B29F] text-lg"
+              value={form.role}
+              onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
+            >
+              <option value="user">Usuario</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          {!editMode && (
+            <div className="flex flex-col">
+              <label className="text-xs text-gray-600 mb-1" htmlFor="password-input">Contraseña</label>
+              <input
+                id="password-input"
+                type="password"
+                placeholder="Contraseña"
+                className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#13B29F] text-lg"
+                value={form.password}
+                onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                required
+              />
+            </div>
+          )}
+        </div>
+        <div className="mt-6 flex gap-2 w-full justify-center">
+          <button
+            type="submit"
+            className="bg-[#13B29F] hover:bg-[#119e8d] text-white rounded-xl py-3 px-6 text-lg font-semibold transition-colors disabled:opacity-50"
+            disabled={loading}
+          >
+            {editMode ? "Guardar cambios" : "Agregar usuario"}
+          </button>
+          {editMode && (
+            <button
+              type="button"
+              className="bg-gray-400 text-white rounded-xl py-3 px-6 text-lg font-semibold hover:bg-gray-500 transition-colors"
+              onClick={() => { setEditMode(false); setForm({ _id: "", name: "", email: "", role: "user", password: "" }); }}
+              disabled={loading}
+            >
+              Cancelar
+            </button>
+          )}
+        </div>
+        {error && <div className="text-red-600 mt-4 w-full text-center">{error}</div>}
       </form>
-      <ul>
-        {usuarios.map(usuario => (
-          <li key={usuario._id} className="flex justify-between items-center border-b py-2">
-            <span>{usuario.nombre} ({usuario.correo}) - <span className="text-xs">{usuario.rol}{!usuario.activo && ' (inactivo)'}</span></span>
-            <span>
-              <button className="text-blue-600 mr-2" onClick={() => handleEdit(usuario)}>Editar</button>
-              <button className="text-red-600" onClick={() => handleDelete(usuario._id)}>Eliminar</button>
-            </span>
-          </li>
-        ))}
-      </ul>
+
+      {/* Listado de usuarios */}
+      <div className="overflow-x-auto w-full max-w-2xl">
+        <table className="min-w-full border text-sm rounded-xl overflow-hidden shadow-md bg-white">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="p-3 border">Nombre</th>
+              <th className="p-3 border">Email</th>
+              <th className="p-3 border">Rol</th>
+              <th className="p-3 border">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {clientes.map((c) => (
+              <tr key={c._id} className="hover:bg-gray-50">
+                <td className="p-3 border">{c.name}</td>
+                <td className="p-3 border">{c.email}</td>
+                <td className="p-3 border">{c.role}</td>
+                <td className="p-3 border flex gap-2">
+                  <button
+                    className="bg-yellow-400 px-3 py-1 rounded-lg text-xs font-semibold hover:bg-yellow-500 transition-colors"
+                    onClick={() => handleEdit(c)}
+                    disabled={loading}
+                  >Editar</button>
+                  <button
+                    className="bg-red-600 text-white px-3 py-1 rounded-lg text-xs font-semibold hover:bg-red-700 transition-colors"
+                    onClick={() => handleDelete(c._id)}
+                    disabled={loading}
+                  >Eliminar</button>
+                </td>
+              </tr>
+            ))}
+            {clientes.length === 0 && (
+              <tr>
+                <td colSpan={5} className="text-center p-4 text-gray-500">No hay usuarios registrados.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

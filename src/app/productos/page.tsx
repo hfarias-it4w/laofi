@@ -1,93 +1,203 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
+import { useEffect, useState } from "react";
 
-interface Producto {
+type Product = {
   _id: string;
-  nombre: string;
-  descripcion?: string;
-  precio: number;
-  imagenUrl?: string;
-  disponible: boolean;
-}
+  name: string;
+  price: number;
+  description?: string;
+};
 
-export default function ProductosPage() {
-  const [productos, setProductos] = useState<Producto[]>([]);
-  const [nombre, setNombre] = useState("");
-  const [descripcion, setDescripcion] = useState("");
-  const [precio, setPrecio] = useState<number>(0);
-  const [imagenUrl, setImagenUrl] = useState("");
-  const [disponible, setDisponible] = useState(true);
-  const [editId, setEditId] = useState<string|null>(null);
+export default function ProductosAdmin() {
+  const { data: session, status } = useSession();
+  const user = session?.user as { role?: string } | undefined;
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState<{ name: string; price: string; description: string; id?: string }>({ name: "", price: "", description: "" });
+  const [editId, setEditId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch("/api/productos")
-      .then(res => res.json())
-      .then(setProductos);
+    fetchProducts();
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  async function fetchProducts() {
+    setLoading(true);
+    const res = await fetch("/api/productos");
+    const data = await res.json();
+    setProducts(data);
+    setLoading(false);
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!nombre || precio === null) return;
-    if (editId) {
-      await fetch(`/api/productos/${editId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre, descripcion, precio, imagenUrl, disponible })
-      });
-    } else {
-      await fetch("/api/productos", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre, descripcion, precio, imagenUrl, disponible })
-      });
+    setError("");
+    if (!form.name || !form.price) {
+      setError("Nombre y precio son obligatorios");
+      return;
     }
-    setNombre(""); setDescripcion(""); setPrecio(0); setImagenUrl(""); setDisponible(true); setEditId(null);
-    fetch("/api/productos").then(res => res.json()).then(setProductos);
-  };
+    const method = editId ? "PUT" : "POST";
+    const url = editId ? `/api/productos/${editId}` : "/api/productos";
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: form.name, price: Number(form.price), description: form.description })
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.message || "Error al guardar producto");
+      return;
+    }
+    setForm({ name: "", price: "", description: "" });
+    setEditId(null);
+    fetchProducts();
+  }
 
-  const handleEdit = (producto: Producto) => {
-    setEditId(producto._id);
-    setNombre(producto.nombre);
-    setDescripcion(producto.descripcion || "");
-    setPrecio(producto.precio);
-    setImagenUrl(producto.imagenUrl || "");
-    setDisponible(producto.disponible);
-  };
+  function handleEdit(product: Product) {
+    setForm({ name: product.name, price: String(product.price), description: product.description || "", id: product._id });
+    setEditId(product._id);
+  }
 
-  const handleDelete = async (id: string) => {
+  function handleCancelEdit() {
+    setForm({ name: "", price: "", description: "" });
+    setEditId(null);
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirmDelete) {
+      setConfirmDelete(id);
+      return;
+    }
     await fetch(`/api/productos/${id}`, { method: "DELETE" });
-    fetch("/api/productos").then(res => res.json()).then(setProductos);
-  };
+    setConfirmDelete(null);
+    fetchProducts();
+  }
+
+  if (status === "loading") {
+    return <div className="text-center mt-10 text-gray-500">Cargando sesión...</div>;
+  }
+  if (!user || user.role !== "admin") {
+    return <div className="text-red-600 text-center mt-10">Acceso denegado</div>;
+  }
 
   return (
-    <div className="max-w-xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Productos</h1>
-      <form onSubmit={handleSubmit} className="mb-4 space-y-2">
-        <input className="border p-2 w-full" placeholder="Nombre" value={nombre} onChange={e => setNombre(e.target.value)} required />
-        <input className="border p-2 w-full" placeholder="Descripción" value={descripcion} onChange={e => setDescripcion(e.target.value)} />
-        <input className="border p-2 w-full" type="number" placeholder="Precio" value={precio} onChange={e => setPrecio(Number(e.target.value))} required />
-        <input className="border p-2 w-full" placeholder="URL de imagen" value={imagenUrl} onChange={e => setImagenUrl(e.target.value)} />
-        <label className="flex items-center gap-2">
-          <input type="checkbox" checked={disponible} onChange={e => setDisponible(e.target.checked)} /> Disponible
-        </label>
-        <button className="bg-blue-600 text-white px-4 py-2 rounded" type="submit">{editId ? 'Actualizar' : 'Agregar'}</button>
-        {editId && <button type="button" className="ml-2 text-gray-600" onClick={() => { setEditId(null); setNombre(""); setDescripcion(""); setPrecio(0); setImagenUrl(""); setDisponible(true); }}>Cancelar</button>}
+    <div className="flex flex-col items-center flex-grow py-4 px-4 bg-white min-h-screen">
+      <h1 className="text-2xl font-bold text-[#3A3A3A] mb-2">Administrador de Productos</h1>
+      <p className="mb-6 text-gray-700">Aquí puedes agregar, editar o eliminar productos del menú.</p>
+      <form onSubmit={handleSubmit} className="flex flex-col items-center w-full max-w-2xl bg-white rounded-xl shadow-lg px-8 py-8 mb-8">
+        <h2 className="text-lg font-semibold mb-4">{editId ? "Editar producto" : "Nuevo producto"}</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full mb-4">
+          <div className="flex flex-col">
+            <label className="text-xs text-gray-600 mb-1" htmlFor="nombre-input">Nombre</label>
+            <input
+              id="nombre-input"
+              type="text"
+              placeholder="Nombre"
+              className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#13B29F] text-lg"
+              value={form.name}
+              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+            />
+          </div>
+          <div className="flex flex-col">
+            <label className="text-xs text-gray-600 mb-1" htmlFor="precio-input">Precio</label>
+            <input
+              id="precio-input"
+              type="number"
+              placeholder="Precio"
+              className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#13B29F] text-lg"
+              value={form.price}
+              onChange={e => setForm(f => ({ ...f, price: e.target.value }))}
+            />
+          </div>
+          <div className="flex flex-col md:col-span-2">
+            <label className="text-xs text-gray-600 mb-1" htmlFor="descripcion-input">Descripción</label>
+            <input
+              id="descripcion-input"
+              type="text"
+              placeholder="Descripción"
+              className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#13B29F] text-lg"
+              value={form.description}
+              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+            />
+          </div>
+        </div>
+        {error && <div className="text-red-600 mb-4 w-full text-center">{error}</div>}
+        <div className="flex gap-2 w-full justify-center">
+          <button type="submit" className="bg-[#13B29F] hover:bg-[#119e8d] text-white rounded-xl py-3 px-6 text-lg font-semibold transition-colors">
+            {editId ? "Guardar cambios" : "Agregar"}
+          </button>
+          {editId && (
+            <button type="button" className="bg-gray-400 text-white rounded-xl py-3 px-6 text-lg font-semibold hover:bg-gray-500 transition-colors" onClick={handleCancelEdit}>
+              Cancelar
+            </button>
+          )}
+        </div>
       </form>
-      <ul>
-        {productos.map(producto => (
-          <li key={producto._id} className="flex justify-between items-center border-b py-2">
-            <span>
-              <span className="font-semibold">{producto.nombre}</span> - ${producto.precio} {producto.disponible ? '' : <span className="text-xs text-red-500">(No disponible)</span>}<br />
-              <span className="text-xs text-gray-600">{producto.descripcion}</span>
-              {producto.imagenUrl && <img src={producto.imagenUrl} alt={producto.nombre} className="h-8 inline ml-2" />}
-            </span>
-            <span>
-              <button className="text-blue-600 mr-2" onClick={() => handleEdit(producto)}>Editar</button>
-              <button className="text-red-600" onClick={() => handleDelete(producto._id)}>Eliminar</button>
-            </span>
-          </li>
-        ))}
-      </ul>
+      <h2 className="text-lg font-semibold mb-4">Listado de productos</h2>
+      <div className="overflow-x-auto w-full max-w-2xl">
+        {loading ? (
+          <div className="text-gray-500">Cargando...</div>
+        ) : products.length === 0 ? (
+          <div className="text-gray-500">No hay productos registrados.</div>
+        ) : (
+          <table className="min-w-full border text-sm rounded-xl overflow-hidden shadow-md bg-white">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="p-3 border">Nombre</th>
+                <th className="p-3 border">Precio</th>
+                <th className="p-3 border">Descripción</th>
+                <th className="p-3 border">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {products.map(product => (
+                <tr key={product._id} className="hover:bg-gray-50">
+                  <td className="p-3 border">{product.name}</td>
+                  <td className="p-3 border">${product.price}</td>
+                  <td className="p-3 border">{product.description}</td>
+                  <td className="p-3 border flex gap-2 justify-center">
+                    <button className="bg-yellow-400 px-3 py-1 rounded-lg text-xs font-semibold hover:bg-yellow-500 transition-colors" onClick={() => handleEdit(product)}>
+                      Editar
+                    </button>
+                    {confirmDelete === product._id ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-red-600">¿Confirmar?</span>
+                        <button
+                          className="bg-red-600 text-white px-3 py-1 rounded-lg text-xs font-semibold hover:bg-red-700 transition-colors"
+                          type="button"
+                          onClick={() => handleDelete(product._id)}
+                        >
+                          Si
+                        </button>
+                        <button
+                          className="ml-2 bg-gray-300 text-gray-700 px-3 py-1 rounded-lg text-xs font-semibold hover:bg-gray-400 transition-colors"
+                          type="button"
+                          onClick={e => {
+                            e.stopPropagation();
+                            setConfirmDelete(null);
+                          }}
+                        >
+                          No
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        className="bg-red-600 text-white px-3 py-1 rounded-lg text-xs font-semibold hover:bg-red-700 transition-colors"
+                        type="button"
+                        onClick={() => handleDelete(product._id)}
+                      >
+                        Eliminar
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   );
 }
