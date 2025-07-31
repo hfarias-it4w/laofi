@@ -38,13 +38,17 @@ export default function Home() {
     if (!productoId) return setMensaje("Selecciona un producto");
     const producto = productos.find((p) => p._id === productoId);
     if (!producto) return setMensaje("Producto no encontrado");
+    // Calcular descuento si es efectivo
+    const esEfectivo = metodoPago === "efectivo";
+    const precioUnitario = producto.price;
+    const precioUnitarioConDescuento = esEfectivo ? (precioUnitario * 0.9) : precioUnitario;
     const productosPedido = [{
       producto: producto._id,
       nombre: producto.name,
       cantidad,
-      precio: producto.price
+      precio: Number(precioUnitarioConDescuento.toFixed(2))
     }];
-    const total = cantidad * producto.price;
+    const total = cantidad * precioUnitarioConDescuento;
     // Si el método de pago es mercadopago, usa el endpoint interno
     if (metodoPago === "mercadopago") {
       try {
@@ -177,18 +181,53 @@ export default function Home() {
                     required
                     placeholder="Cantidad"
                   />
-                  <select
-                    className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#13B29F] text-lg"
-                    value={metodoPago}
-                    onChange={(e) => setMetodoPago(e.target.value)}
-                    required
-                  >
+                  {/* Precio unitario y total alineados horizontalmente */}
+                  {selectedProducto && (() => {
+                    const esEfectivo = metodoPago === "efectivo";
+                    const precioUnitario = selectedProducto.price;
+                    const precioUnitarioConDescuento = esEfectivo ? (precioUnitario * 0.9) : precioUnitario;
+                    const total = cantidad * precioUnitario;
+                    const totalConDescuento = esEfectivo ? (total * 0.9) : total;
+                    return (
+                      <div className="flex flex-row gap-6 mb-2 w-full justify-between">
+                        <span className="text-sm text-gray-700 flex items-center">
+                          Precio unitario:
+                          <span className="font-semibold ml-1 text-[#13B29F]">
+                            ${precioUnitarioConDescuento.toFixed(2)}
+                          </span>
+                          {esEfectivo && (
+                            <>
+                              <span className="ml-2 text-xs text-gray-500 line-through">${precioUnitario.toFixed(2)}</span>
+                              <span className="ml-2 text-xs font-semibold text-[#13B29F]">10% OFF</span>
+                            </>
+                          )}
+                        </span>
+                        <span className="text-sm text-gray-700 flex items-center">
+                          Total:
+                          <span className="font-semibold ml-1 text-[#13B29F]">
+                            ${totalConDescuento.toFixed(2)}
+                          </span>
+                        </span>
+                      </div>
+                    );
+                  })()}
+                  <div className="flex flex-col gap-2">
+                    <span className="text-sm text-gray-600 mb-1">Método de pago</span>
                     {METODOS_PAGO.map((m) => (
-                      <option key={m.value} value={m.value}>
+                      <label key={m.value} className="flex items-center gap-2 cursor-pointer text-lg">
+                        <input
+                          type="radio"
+                          name="metodoPago"
+                          value={m.value}
+                          checked={metodoPago === m.value}
+                          onChange={() => setMetodoPago(m.value)}
+                          className="accent-[#13B29F] w-5 h-5"
+                          required
+                        />
                         {m.label}
-                      </option>
+                      </label>
                     ))}
-                  </select>
+                  </div>
                   <button
                     className="bg-[#13B29F] hover:bg-[#119e8d] text-white rounded-xl py-3 px-6 text-lg font-semibold transition-colors"
                     type="submit"
