@@ -45,37 +45,29 @@ export default function Home() {
       precio: producto.price
     }];
     const total = cantidad * producto.price;
-    // Si el método de pago es mercadopago, puedes mantener la integración externa si lo deseas
+    // Si el método de pago es mercadopago, usa el endpoint interno
     if (metodoPago === "mercadopago") {
       try {
-        const res = await fetch("https://api.mercadopago.com/checkout/preferences", {
+        // Generar un id temporal para el pedido (puede ser un UUID o timestamp, aquí usamos Date.now())
+        const external_reference = `${producto._id}-${Date.now()}`;
+        const res = await fetch("/api/mercado-pago/create-preference", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer APP_USR-8796834111021805-072921-c1c14761358477bf24e24ad1adc69294-169299039`,
-          },
-          body: JSON.stringify({
-            items: productosPedido.map((item) => ({
-              title: item.nombre,
-              quantity: item.cantidad,
-              currency_id: "ARS",
-              unit_price: item.precio,
-            })),
-          }),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ productos: productosPedido, external_reference }),
         });
         const data = await res.json();
-        if (!res.ok) {
-          setMensaje((data && (data.message || data.error || JSON.stringify(data))) || "Error al crear preferencia de pago");
+        if (!res.ok || !data.preference || !data.preference.init_point) {
+          setMensaje((data && (data.error || data.message || JSON.stringify(data))) || "Error al crear preferencia de pago");
           return;
         }
-        setShowModal(false);
-        if (audioRef.current) {
-          audioRef.current.currentTime = 0;
-          audioRef.current.play();
-        }
-        setTimeout(() => {
-          window.location.href = "pago-exitoso";
-        }, 400);
+        // Guardar el pedido en la base de datos con estado pendiente (opcional, si tienes endpoint para esto)
+        // await fetch("/api/pedidos", {
+        //   method: "POST",
+        //   headers: { "Content-Type": "application/json" },
+        //   body: JSON.stringify({ productos: productosPedido, metodoPago, total, external_reference }),
+        // });
+        // Redirigir al usuario a Mercado Pago
+        window.location.href = data.preference.init_point;
         return;
       } catch (err) {
         setMensaje(

@@ -39,6 +39,9 @@ export const authOptions: NextAuthOptions = {
       if (user && typeof user === "object" && "role" in user) {
         token.role = (user as any).role;
       }
+      if (user && typeof user === "object" && "id" in user) {
+        token.id = (user as any).id;
+      }
       return token;
     },
     async session({ session, token }) {
@@ -48,6 +51,9 @@ export const authOptions: NextAuthOptions = {
       // Agregar el _id del usuario a la sesión para que esté disponible en el backend
       if (session.user && token.sub) {
         (session.user as any)._id = token.sub;
+      }
+      if (session.user && token.id) {
+        (session.user as any).id = token.id;
       }
       return session;
     },

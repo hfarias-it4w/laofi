@@ -12,6 +12,7 @@ export interface IPedido extends Document {
   metodoPago: "mercadopago" | "efectivo";
   total: number;
   estado: string;
+  external_reference?: string;
   createdAt: Date;
 }
 
@@ -28,6 +29,7 @@ const PedidoSchema = new Schema<IPedido>({
   metodoPago: { type: String, enum: ['mercadopago', 'efectivo'], required: true },
   total: { type: Number, required: true },
   estado: { type: String, default: "pendiente" },
+  external_reference: { type: String },
   createdAt: { type: Date, default: Date.now },
 });
 
