@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { BsFillExclamationOctagonFill } from "react-icons/bs";
+import { FaCoffee, FaRedo } from "react-icons/fa";
 
 type PedidoProducto = {
   nombre: string;
@@ -68,60 +69,70 @@ export default function HistorialPedidos() {
       ) : pedidos.length === 0 ? (
         <div className="text-gray-500">No tienes pedidos registrados.</div>
       ) : (
-        <ul className="divide-y divide-gray-200">
+        <div className="flex flex-col gap-6">
           {[...pedidos]
             .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
             .map((p) => {
-              const item = p.productos[0];
-              const totalPrecio = typeof item?.precio === "number" && typeof item?.cantidad === "number"
-                ? item.precio * item.cantidad
-                : item?.precio;
               const metodoPagoLabel = METODOS_PAGO.find((m) => m.value === p.metodoPago)?.label || p.metodoPago;
               const fecha = new Date(p.createdAt);
+              const totalPedido = p.productos.reduce((acc, prod) => acc + (typeof prod.precio === "number" && typeof prod.cantidad === "number" ? prod.precio * prod.cantidad : 0), 0);
+              let estadoColor = "bg-gray-100 text-gray-600";
+              let estadoIcon = null;
+              if (p.estado === "pendiente") {
+                estadoColor = "bg-yellow-100 text-yellow-800";
+                estadoIcon = <FaCoffee className="inline mr-1" />;
+              } else if (p.estado === "preparado") {
+                estadoColor = "bg-green-100 text-green-800";
+                estadoIcon = <FaCoffee className="inline mr-1" />;
+              } else if (p.estado === "cancelado") {
+                estadoColor = "bg-red-100 text-red-700";
+                estadoIcon = <BsFillExclamationOctagonFill className="inline mr-1" />;
+              }
               return (
-                <li key={p._id} className="py-4 px-2 sm:px-3 bg-white rounded-xl shadow-sm mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                  <div className="flex-1 min-w-0 w-full">
-                    <div className="flex flex-col xs:flex-row xs:items-center gap-1 xs:gap-2 flex-wrap w-full">
-                      <span className="font-semibold text-[#13B29F] text-base truncate max-w-full">{p.user?.name || p.user?.email || "-"}</span>
-                      <span className="text-gray-700 text-base">pidió</span>
-                      <span className="font-semibold text-base truncate max-w-full">{item?.cantidad} x {item?.nombre}</span>
+                <div key={p._id} className="rounded-2xl shadow-lg border border-gray-100 bg-gradient-to-br from-[#f7fafc] to-[#e6fffa] p-6 flex flex-col gap-4">
+                  <div className="flex items-center gap-3 mb-2">
+                    <FaCoffee className="text-[#13B29F] text-2xl" />
+                    <span className="font-bold text-lg text-[#13B29F]">{p.user?.name || p.user?.email || "-"}</span>
+                    <span className={`ml-auto px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ${estadoColor}`}>{estadoIcon}{p.estado.charAt(0).toUpperCase() + p.estado.slice(1)}</span>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <span className="text-gray-700 font-semibold mb-1">Productos</span>
+                    <ul className="pl-4 list-disc">
+                      {p.productos.map((prod, idx) => (
+                        <li key={idx} className="flex flex-col sm:flex-row sm:items-center gap-2 text-base">
+                          <span className="font-semibold text-[#13B29F]">{prod.cantidad} x {prod.nombre}</span>
+                          <span className="text-gray-600">Precio unitario: ${typeof prod.precio === "number" ? prod.precio.toFixed(2) : "-"}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2 text-sm">
+                    <div className="flex flex-col">
+                      <span className="text-gray-600 font-semibold">Método de pago</span>
+                      <span className="font-semibold text-[#13B29F]">{metodoPagoLabel}</span>
                     </div>
-                    <div className="grid grid-cols-1 xs:grid-cols-2 gap-x-4 gap-y-1 mt-2 text-sm w-full">
-                      <div className="flex justify-between xs:block">
-                        <span className="text-gray-600">Precio unitario:</span>
-                        <span className="font-semibold text-[#13B29F] ml-2 xs:ml-0">${typeof item?.precio === "number" ? item.precio.toFixed(2) : '-'}</span>
-                      </div>
-                      <div className="flex justify-between xs:block">
-                        <span className="text-gray-600">Total:</span>
-                        <span className="font-semibold text-[#13B29F] ml-2 xs:ml-0">${typeof totalPrecio === "number" ? totalPrecio.toFixed(2) : '-'}</span>
-                      </div>
-                      <div className="flex justify-between xs:block col-span-1 xs:col-span-2">
-                        <span className="text-gray-600">Pago:</span>
-                        <span className="font-semibold ml-2 xs:ml-0">{metodoPagoLabel}</span>
-                      </div>
-                      <div className="flex justify-between xs:block col-span-1 xs:col-span-2">
-                        <span className="text-gray-500">{fecha.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" })}</span>
-                        <span className="text-gray-500 ml-2 xs:ml-0">{fecha.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                      </div>
+                    <div className="flex flex-col">
+                      <span className="text-gray-600 font-semibold">Total pedido</span>
+                      <span className="font-semibold text-[#13B29F]">${totalPedido.toFixed(2)}</span>
                     </div>
                   </div>
-                  <div className="sm:mt-0 mt-2 sm:ml-4 flex items-center self-end sm:self-center">
-                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
-                      p.estado === 'pendiente'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : p.estado === 'preparado'
-                        ? 'bg-green-100 text-green-800'
-                        : p.estado === 'cancelado'
-                        ? 'bg-red-100 text-red-700'
-                        : 'bg-gray-100 text-gray-600'
-                    }`}>
-                      {p.estado.charAt(0).toUpperCase() + p.estado.slice(1)}
+                  <div className="flex justify-between items-center mt-2 text-xs text-gray-500">
+                    <span className="font-semibold">Fecha:</span>
+                    <span>
+                      {fecha.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" })} &nbsp;
+                      {fecha.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </span>
                   </div>
-                </li>
+                  <button
+                    className="mt-3 self-end flex items-center gap-2 bg-[#13B29F] hover:bg-[#119e8d] text-white rounded-xl py-2 px-4 text-sm font-semibold transition-colors shadow"
+                    onClick={() => alert('Funcionalidad de repetir pedido próximamente')}
+                  >
+                    <FaRedo /> Repetir pedido
+                  </button>
+                </div>
               );
             })}
-        </ul>
+        </div>
       )}
     </div>
   );
