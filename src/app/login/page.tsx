@@ -10,8 +10,17 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const router = useRouter();
 
+  const validateEmail = (email: string) => {
+    // Validación simple de email
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email || !password || !validateEmail(email)) {
+      setError("Credenciales incorrectas");
+      return;
+    }
     const res = await signIn("credentials", {
       redirect: false,
       email,
@@ -30,13 +39,16 @@ export default function LoginPage() {
       <img src="/logolaofi.svg" alt="Logo Laofi" className="h-24 w-auto mb-6 mt-10" />
       <form onSubmit={handleSubmit} className="flex flex-col w-full max-w-md bg-white rounded-xl shadow-lg px-8 py-8 mt-2">
         <h1 className="text-2xl font-bold text-[#3A3A3A] mb-6">Iniciar sesión</h1>
-        <label className="block text-xs text-gray-600 mb-1 text-left w-full" htmlFor="email">Email</label>
+        <label className="block text-xs text-gray-600 mb-1 text-left w-full" htmlFor="email"></label>
         <input
           id="email"
           type="email"
           placeholder="Email"
           value={email}
-          onChange={e => setEmail(e.target.value)}
+          onChange={e => {
+            setEmail(e.target.value);
+            if (error) setError("");
+          }}
           className="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#13B29F] text-lg"
         />
         <label className="block text-xs text-gray-600 mb-1 text-left w-full" htmlFor="password">Contraseña</label>
@@ -45,7 +57,10 @@ export default function LoginPage() {
           type="password"
           placeholder="Contraseña"
           value={password}
-          onChange={e => setPassword(e.target.value)}
+          onChange={e => {
+            setPassword(e.target.value);
+            if (error) setError("");
+          }}
           className="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#13B29F] text-lg"
         />
         {error && <div className="text-red-500 mb-2 w-full text-center">{error}</div>}
