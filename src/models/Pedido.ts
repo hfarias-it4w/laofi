@@ -13,6 +13,7 @@ export interface IPedido extends Document {
   total: number;
   estado: string;
   external_reference?: string;
+  comentarios?: string;
   createdAt: Date;
 }
 
@@ -30,6 +31,7 @@ const PedidoSchema = new Schema<IPedido>({
   total: { type: Number, required: true },
   estado: { type: String, default: "pendiente" },
   external_reference: { type: String },
+  comentarios: { type: String, trim: true },
   createdAt: { type: Date, default: Date.now },
 });
 

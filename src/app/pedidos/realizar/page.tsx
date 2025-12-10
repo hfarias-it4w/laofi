@@ -1,58 +1,119 @@
 "use client";
-import React, { useEffect, useState, useRef } from "react";
+
+import Image from "next/image";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useSession, signIn } from "next-auth/react";
+import type { IconType } from "react-icons";
+import { FaArrowRight, FaMinus, FaMoneyBillWave, FaPlus, FaRegClock } from "react-icons/fa";
+import { PiCoffeeBold } from "react-icons/pi";
+import { RiSecurePaymentLine } from "react-icons/ri";
 
+interface Producto {
+  _id: string;
+  name: string;
+  price: number;
+  image?: string;
+  description?: string;
+}
 
-
-// El modelo actual no requiere usuarioId ni items, sino user y productos
 interface PedidoProducto {
+  producto: string;
   nombre: string;
   cantidad: number;
   precio: number;
 }
-const METODOS_PAGO = [
-  { value: "mercadopago", label: "Mercado Pago" },
-  { value: "efectivo", label: "Efectivo" },
+
+const METODOS_PAGO: Array<{
+  value: "mercadopago" | "efectivo";
+  label: string;
+  helper: string;
+  badge: string;
+  icon: IconType;
+}> = [
+  {
+    value: "mercadopago",
+    label: "Mercado Pago",
+    helper: "Pago online con link seguro",
+    badge: "Link directo",
+    icon: RiSecurePaymentLine,
+  },
+  {
+    value: "efectivo",
+    label: "Efectivo",
+    helper: "10% off abonando en recepción",
+    badge: "Descuento 10%",
+    icon: FaMoneyBillWave,
+  },
 ];
 
-export default function Home() {
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(value);
+
+export default function RealizarPedidoPage() {
   const { data: session } = useSession();
   const audioRef = useRef<HTMLAudioElement>(null);
-  // Ya no se selecciona usuario, el usuario se toma de la sesión
   const [productoId, setProductoId] = useState("");
   const [cantidad, setCantidad] = useState(1);
   const [metodoPago, setMetodoPago] = useState("mercadopago");
-  const [mensaje, setMensaje] = useState("");
-  const [productos, setProductos] = useState<any[]>([]);
+  const [mensaje, setMensaje] = useState<string | null>(null);
+  const [productos, setProductos] = useState<Producto[]>([]);
+  const [isLoadingProductos, setIsLoadingProductos] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [selectedProducto, setSelectedProducto] = useState<any>(null);
+  const [selectedProducto, setSelectedProducto] = useState<Producto | null>(null);
+  const [nota, setNota] = useState("");
 
   useEffect(() => {
+    let mounted = true;
     fetch("/api/productos")
       .then((res) => res.json())
-      .then((data) => setProductos(data));
+      .then((data) => {
+        if (!mounted) return;
+        setProductos(Array.isArray(data) ? data : []);
+      })
+      .catch(() => setProductos([]))
+      .finally(() => mounted && setIsLoadingProductos(false));
+    return () => {
+      mounted = false;
+    };
   }, []);
+
+  const preciosCalculados = useMemo(() => {
+    if (!selectedProducto) {
+      return { precioUnitario: 0, precioConDescuento: 0, total: 0, totalConDescuento: 0 };
+    }
+    const precioUnitario = selectedProducto.price;
+    const applyDiscount = metodoPago === "efectivo";
+    const precioConDescuento = applyDiscount ? precioUnitario * 0.9 : precioUnitario;
+    const total = precioUnitario * cantidad;
+    const totalConDescuento = applyDiscount ? total * 0.9 : total;
+    return { precioUnitario, precioConDescuento, total, totalConDescuento };
+  }, [selectedProducto, cantidad, metodoPago]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!productoId) return setMensaje("Selecciona un producto");
+    if (!productoId) {
+      setMensaje("Seleccioná un producto antes de continuar.");
+      return;
+    }
     const producto = productos.find((p) => p._id === productoId);
-    if (!producto) return setMensaje("Producto no encontrado");
-    // Calcular descuento si es efectivo
+    if (!producto) {
+      setMensaje("No encontramos ese producto. Actualizá la página e intentá nuevamente.");
+      return;
+    }
     const esEfectivo = metodoPago === "efectivo";
     const precioUnitario = producto.price;
-    const precioUnitarioConDescuento = esEfectivo ? (precioUnitario * 0.9) : precioUnitario;
-    const productosPedido = [{
-      producto: producto._id,
-      nombre: producto.name,
-      cantidad,
-      precio: Number(precioUnitarioConDescuento.toFixed(2))
-    }];
+    const precioUnitarioConDescuento = esEfectivo ? precioUnitario * 0.9 : precioUnitario;
+    const productosPedido: PedidoProducto[] = [
+      {
+        producto: producto._id,
+        nombre: producto.name,
+        cantidad,
+        precio: Number(precioUnitarioConDescuento.toFixed(2)),
+      },
+    ];
     const total = cantidad * precioUnitarioConDescuento;
-    // Si el método de pago es mercadopago, usa el endpoint interno
     if (metodoPago === "mercadopago") {
       try {
-        // Generar un id temporal para el pedido (puede ser un UUID o timestamp, aquí usamos Date.now())
         const external_reference = `${producto._id}-${Date.now()}`;
         const res = await fetch("/api/mercado-pago/create-preference", {
           method: "POST",
@@ -64,13 +125,7 @@ export default function Home() {
           setMensaje((data && (data.error || data.message || JSON.stringify(data))) || "Error al crear preferencia de pago");
           return;
         }
-        // Guardar el pedido en la base de datos con estado pendiente (opcional, si tienes endpoint para esto)
-        // await fetch("/api/pedidos", {
-        //   method: "POST",
-        //   headers: { "Content-Type": "application/json" },
-        //   body: JSON.stringify({ productos: productosPedido, metodoPago, total, external_reference }),
-        // });
-        // Redirigir al usuario a Mercado Pago
+        setMensaje(null);
         window.location.href = data.preference.init_point;
         return;
       } catch (err) {
@@ -81,174 +136,344 @@ export default function Home() {
       }
       return;
     }
-    // Otros métodos de pago: flujo normal
+    const payload: Record<string, unknown> = {
+      productos: productosPedido,
+      metodoPago,
+      total,
+    };
+    if (nota.trim()) {
+      payload.comentarios = nota.trim();
+    }
+
     const res = await fetch("/api/pedidos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ productos: productosPedido, metodoPago, total }),
+      body: JSON.stringify(payload),
     });
     if (res.ok) {
       setCantidad(1);
       setShowModal(false);
+      setNota("");
       if (audioRef.current) {
         audioRef.current.currentTime = 0;
         audioRef.current.play();
       }
+      setMensaje(null);
       setTimeout(() => {
         window.location.href = "pedido-exitoso";
       }, 400);
     } else {
-      const err = await res.json();
-      setMensaje(err.message || "Error al realizar pedido");
+      const err = await res.json().catch(() => ({}));
+      setMensaje(err.message || "No pudimos guardar tu pedido. Intentá nuevamente en unos segundos.");
     }
   };
 
   return (
-    <div className="flex flex-col items-center flex-grow py-4 px-4 bg-white min-h-screen">
+    <div className="min-h-screen bg-neutral-50 text-neutral-900">
       <audio ref={audioRef} src="/positive-notification.wav" preload="auto" />
-      <h1 className="text-2xl font-bold text-[#3A3A3A] mb-2">Productos disponibles</h1>
-      <p className="mb-6 text-gray-700">Selecciona tu café favorito y realiza tu pedido.</p>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-2xl mb-8">
-        {productos.length === 0 && <div className="col-span-2 text-center text-gray-500">No hay productos disponibles</div>}
-        {productos.map((p) => (
-          <div key={p._id} className="rounded-xl shadow-lg p-6 flex flex-col items-center bg-white border border-gray-100">
-            {p.image ? (
-              <img
-                src={p.image}
-                alt={p.name}
-                className="w-28 h-28 object-cover rounded-lg mb-3 border border-gray-200 shadow-sm"
-                style={{ background: '#f3f3f3' }}
-              />
-            ) : (
-              <div className="w-28 h-28 flex items-center justify-center bg-gray-100 text-gray-400 rounded-lg mb-3 border border-gray-200">
-                Sin imagen
-              </div>
-            )}
-            <div className="font-semibold text-lg mb-1 text-center">{p.name}</div>
-            <div className="text-gray-700 mb-4 text-xl font-bold">${p.price}</div>
+      <section className="border-b border-neutral-200 bg-white/70 backdrop-blur">
+        <div className="mx-auto flex max-w-screen-lg flex-col gap-6 px-6 py-12 md:flex-row md:items-center">
+          <div className="flex-1 space-y-4">
+            <span className="inline-flex items-center gap-2 rounded-full bg-[#fae79a] px-3 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-neutral-900">
+              <PiCoffeeBold className="h-4 w-4" /> Pedí tu café
+            </span>
+            <h1 className="text-4xl font-black uppercase leading-tight md:text-5xl">
+              Tu café favorito llega directo a tu escritorio
+            </h1>
+            <p className="max-w-xl text-neutral-600">
+              Elegí el producto, definí la cantidad y pagá como prefieras. Cuando confirmás tu pedido, recepción recibe la notificación al instante.
+            </p>
+            <div className="flex flex-wrap items-center gap-3 text-sm text-neutral-600">
+              <span className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 shadow-sm">
+                <FaRegClock className="h-4 w-4 text-[#fdca00]" /> Listo en minutos
+              </span>
+              <span className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 shadow-sm">
+                <FaMoneyBillWave className="h-4 w-4 text-[#fdca00]" /> 10% off en efectivo
+              </span>
+            </div>
+          </div>
+          <div className="flex w-full flex-1 flex-col gap-3 rounded-2xl border border-neutral-200 bg-white p-6 shadow-[0_1px_2px_rgba(0,0,0,0.06)] md:max-w-sm">
+            <h2 className="text-lg font-semibold">¿Cómo funciona?</h2>
+            <ol className="space-y-3 text-sm text-neutral-600">
+              <li><strong>1.</strong> Elegí tu café preferido.</li>
+              <li><strong>2.</strong> Definí la cantidad y el método de pago.</li>
+              <li><strong>3.</strong> Confirmá y esperá la notificación de recepción.</li>
+            </ol>
             <button
-              className="bg-[#13B29F] hover:bg-[#119e8d] text-white rounded-xl py-3 px-6 text-lg font-semibold transition-colors"
+              type="button"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#fdca00] px-4 py-2 text-sm font-semibold text-neutral-900 shadow-[0_10px_40px_-10px_rgba(253,202,0,0.6)] transition hover:bg-[#f1be00]"
               onClick={() => {
-                setSelectedProducto(p);
-                setProductoId(p._id);
-                setShowModal(true);
-                setCantidad(1);
-                setMensaje("");
+                const section = document.getElementById("productos-listado");
+                section?.scrollIntoView({ behavior: "smooth" });
               }}
             >
-              Pedir ahora
+              Ver menú
+              <FaArrowRight className="h-4 w-4" />
             </button>
           </div>
-        ))}
-      </div>
+        </div>
+      </section>
 
-      {/* Modal para pedir producto */}
+      <main className="mx-auto max-w-screen-xl px-6 pb-24" id="productos-listado">
+        <header className="flex flex-col gap-2 pt-16 pb-8 text-center">
+          <h2 className="text-3xl font-bold text-neutral-900 md:text-4xl">Seleccioná tu café</h2>
+          <p className="mx-auto max-w-2xl text-neutral-600">
+            Nuestros baristas preparan cada bebida con granos recién molidos. Podés pagar con Mercado Pago o en efectivo con descuento exclusivo para coworkers.
+          </p>
+        </header>
+
+        {mensaje && (
+          <div className="mx-auto mb-8 max-w-screen-md rounded-lg border border-[#fdca00]/40 bg-[#fff7d1] px-4 py-3 text-sm text-neutral-800">
+            {mensaje}
+          </div>
+        )}
+
+        {isLoadingProductos ? (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div
+                key={index}
+                className="animate-pulse rounded-2xl border border-neutral-200 bg-white p-6 shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
+              >
+                <div className="mb-4 h-40 w-full rounded-xl bg-neutral-100" />
+                <div className="mb-3 h-4 w-2/3 rounded bg-neutral-200" />
+                <div className="mb-6 h-4 w-1/2 rounded bg-neutral-200" />
+                <div className="h-10 w-full rounded-lg bg-neutral-200" />
+              </div>
+            ))}
+          </div>
+        ) : productos.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-neutral-300 bg-white p-12 text-center text-neutral-500">
+            Aún no hay productos disponibles. Volvé más tarde o avisá a recepción.
+          </div>
+        ) : (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {productos.map((producto) => (
+              <article
+                key={producto._id}
+                className="group flex flex-col justify-between rounded-2xl border border-transparent bg-white p-6 shadow-[0_10px_30px_-20px_rgba(0,0,0,0.45)] transition hover:-translate-y-1 hover:border-[#fdca00]"
+              >
+                <div>
+                  <div className="relative mb-5 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100">
+                    {producto.image ? (
+                      <Image
+                        src={producto.image}
+                        alt={producto.name}
+                        width={400}
+                        height={160}
+                        className="h-40 w-full object-cover transition duration-300 group-hover:scale-105"
+                        unoptimized
+                      />
+                    ) : (
+                      <div className="flex h-40 items-center justify-center text-neutral-400">
+                        <PiCoffeeBold className="h-10 w-10" />
+                      </div>
+                    )}
+                  </div>
+                  <h3 className="text-lg font-semibold text-neutral-900">{producto.name}</h3>
+                  <p className="mt-2 text-sm text-neutral-500">
+                    {producto.description ?? "Preparado con nuestros granos seleccionados para que disfrutes cada pausa."}
+                  </p>
+                </div>
+                <div className="mt-6 flex items-center justify-between">
+                  <span className="text-xl font-bold text-neutral-900">{formatCurrency(producto.price)}</span>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-2 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-neutral-800"
+                    onClick={() => {
+                      setSelectedProducto(producto);
+                      setProductoId(producto._id);
+                      setShowModal(true);
+                      setCantidad(1);
+                      setMetodoPago("mercadopago");
+                      setNota("");
+                      setMensaje(null);
+                    }}
+                  >
+                    Pedir ahora
+                    <FaArrowRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </main>
+
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-lg px-8 py-8 w-full max-w-md relative flex flex-col items-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/70 px-4">
+          <div className="relative w-full max-w-3xl overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-[0_40px_80px_-40px_rgba(0,0,0,0.45)]">
             <button
-              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl"
-              onClick={() => setShowModal(false)}
+              className="absolute right-5 top-5 text-2xl text-neutral-400 transition hover:text-neutral-700"
+              onClick={() => {
+                setShowModal(false);
+                setNota("");
+              }}
               aria-label="Cerrar"
             >
               ×
             </button>
-            {selectedProducto?.image ? (
-              <img
-                src={selectedProducto.image}
-                alt={selectedProducto.name}
-                className="w-32 h-32 object-cover rounded-lg mb-4 border border-gray-200 shadow-sm"
-                style={{ background: '#f3f3f3' }}
-              />
-            ) : (
-              <div className="w-32 h-32 flex items-center justify-center bg-gray-100 text-gray-400 rounded-lg mb-4 border border-gray-200">
-                Sin imagen
-              </div>
-            )}
-            <h2 className="text-2xl font-bold mb-2 text-[#3A3A3A] text-center">{selectedProducto?.name}</h2>
-            {session ? (
-              <>
-                <p className="mb-4 text-gray-700 text-center">Selecciona la cantidad y el método de pago para tu pedido.</p>
-                <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full">
-                  <label className="text-sm text-gray-600 mb-1" htmlFor="cantidad-input">Cantidad</label>
-                  <input
-                    id="cantidad-input"
-                    className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#13B29F] text-lg"
-                    type="number"
-                    min={1}
-                    value={cantidad}
-                    onChange={e => setCantidad(Number(e.target.value))}
-                    required
-                    placeholder="Cantidad"
-                  />
-                  {/* Precio unitario y total alineados horizontalmente */}
-                  {selectedProducto && (() => {
-                    const esEfectivo = metodoPago === "efectivo";
-                    const precioUnitario = selectedProducto.price;
-                    const precioUnitarioConDescuento = esEfectivo ? (precioUnitario * 0.9) : precioUnitario;
-                    const total = cantidad * precioUnitario;
-                    const totalConDescuento = esEfectivo ? (total * 0.9) : total;
-                    return (
-                      <div className="flex flex-row gap-6 mb-2 w-full justify-between">
-                        <span className="text-sm text-gray-700 flex items-center">
-                          Precio unitario:
-                          <span className="font-semibold ml-1 text-[#13B29F]">
-                            ${precioUnitarioConDescuento.toFixed(2)}
-                          </span>
-                          {esEfectivo && (
-                            <>
-                              <span className="ml-2 text-xs text-gray-500 line-through">${precioUnitario.toFixed(2)}</span>
-                              <span className="ml-2 text-xs font-semibold text-[#13B29F]">10% OFF</span>
-                            </>
-                          )}
-                        </span>
-                        <span className="text-sm text-gray-700 flex items-center">
-                          Total:
-                          <span className="font-semibold ml-1 text-[#13B29F]">
-                            ${totalConDescuento.toFixed(2)}
-                          </span>
-                        </span>
-                      </div>
-                    );
-                  })()}
-                  <div className="flex flex-col gap-2">
-                    <span className="text-sm text-gray-600 mb-1">Método de pago</span>
-                    {METODOS_PAGO.map((m) => (
-                      <label key={m.value} className="flex items-center gap-2 cursor-pointer text-lg">
-                        <input
-                          type="radio"
-                          name="metodoPago"
-                          value={m.value}
-                          checked={metodoPago === m.value}
-                          onChange={() => setMetodoPago(m.value)}
-                          className="accent-[#13B29F] w-5 h-5"
-                          required
-                        />
-                        {m.label}
-                      </label>
-                    ))}
+            <div className="grid gap-8 p-8 md:grid-cols-[280px_1fr]">
+              <div className="flex flex-col gap-5 rounded-2xl bg-neutral-50 p-6">
+                <div className="flex flex-col items-center text-center">
+                  {selectedProducto?.image ? (
+                    <Image
+                      src={selectedProducto.image}
+                      alt={selectedProducto.name}
+                      width={160}
+                      height={160}
+                      className="h-40 w-40 rounded-2xl border border-neutral-200 object-cover"
+                      unoptimized
+                    />
+                  ) : (
+                    <div className="flex h-40 w-40 items-center justify-center rounded-2xl border border-neutral-200 bg-white text-neutral-400">
+                      <PiCoffeeBold className="h-10 w-10" />
+                    </div>
+                  )}
+                  <p className="mt-4 text-xs font-semibold uppercase tracking-[0.3em] text-neutral-400">
+                    Paso final
+                  </p>
+                  <h2 className="mt-2 text-2xl font-bold text-neutral-900">
+                    {session?.user?.name ? `Hola, ${session.user.name.split(" ")[0]}!` : "Confirmá tu café"}
+                  </h2>
+                  <p className="mt-2 max-w-[16rem] text-sm text-neutral-600">
+                    Estamos preparando <strong>{selectedProducto?.name}</strong>. Ajustá los detalles y avisamos a recepción.
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-3 rounded-xl border border-neutral-200 bg-white p-4">
+                  <span className="text-sm font-semibold text-neutral-800">Resumen rápido</span>
+                  <div className="flex items-center justify-between text-sm text-neutral-600">
+                    <span>Precio unitario</span>
+                    <span className="font-semibold text-neutral-900">
+                      {formatCurrency(preciosCalculados.precioConDescuento)}
+                    </span>
                   </div>
-                  <button
-                    className="bg-[#13B29F] hover:bg-[#119e8d] text-white rounded-xl py-3 px-6 text-lg font-semibold transition-colors"
-                    type="submit"
-                  >
-                    Confirmar pedido
-                  </button>
-                </form>
-              </>
-            ) : (
-              <div className="flex flex-col items-center w-full">
-                <button
-                  className="bg-[#13B29F] hover:bg-[#119e8d] text-white rounded-xl py-3 px-6 text-lg font-semibold transition-colors mb-2"
-                  onClick={() => signIn()}
-                >
-                  Iniciar sesión para pedir
-                </button>
-                <p className="text-gray-600 text-center">Debes iniciar sesión para realizar un pedido.</p>
+                  {metodoPago === "efectivo" && (
+                    <div className="flex items-center justify-between text-xs text-[#b07a00]">
+                      <span>Incluye 10% OFF por efectivo</span>
+                      <span>{formatCurrency(preciosCalculados.precioUnitario)}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between border-t border-dashed border-neutral-200 pt-3 text-base font-semibold text-neutral-900">
+                    <span>Total</span>
+                    <span>{formatCurrency(preciosCalculados.totalConDescuento)}</span>
+                  </div>
+                  <p className="text-xs text-neutral-500">
+                    Recepción recibe este resumen y tu nota al instante.
+                  </p>
+                </div>
               </div>
-            )}
+
+              <div className="flex flex-col gap-6">
+                {session ? (
+                  <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+                    <div className="flex flex-col gap-2">
+                      <span className="text-sm font-semibold text-neutral-800">Cantidad</span>
+                      <div className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50 p-2">
+                        <button
+                          type="button"
+                          className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white text-neutral-600 transition hover:bg-neutral-100 hover:text-neutral-900"
+                          onClick={() => setCantidad((prev) => (prev > 1 ? prev - 1 : 1))}
+                          aria-label="Disminuir cantidad"
+                        >
+                          <FaMinus />
+                        </button>
+                        <div className="flex flex-1 items-center justify-center rounded-lg bg-white px-6 py-2 text-base font-semibold text-neutral-900">
+                          {cantidad}
+                        </div>
+                        <button
+                          type="button"
+                          className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white text-neutral-600 transition hover:bg-neutral-100 hover:text-neutral-900"
+                          onClick={() => setCantidad((prev) => prev + 1)}
+                          aria-label="Aumentar cantidad"
+                        >
+                          <FaPlus />
+                        </button>
+                      </div>
+                    </div>
+
+                    <fieldset className="flex flex-col gap-3">
+                      <legend className="text-sm font-semibold text-neutral-800">Método de pago</legend>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {METODOS_PAGO.map((metodo) => {
+                          const MetodoIcon = metodo.icon;
+                          const activo = metodoPago === metodo.value;
+                          return (
+                            <button
+                              key={metodo.value}
+                              type="button"
+                              onClick={() => setMetodoPago(metodo.value)}
+                              className={`flex h-full flex-col justify-between rounded-xl border p-4 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#fdca00] ${
+                                activo ? "border-[#fdca00] bg-[#fff7d1]" : "border-neutral-200 bg-white hover:border-neutral-300"
+                              }`}
+                              aria-pressed={activo}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="text-base font-semibold text-neutral-900">{metodo.label}</span>
+                                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                                  activo ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-600"
+                                }`}>
+                                  {metodo.badge}
+                                </span>
+                              </div>
+                              <p className="mt-3 flex items-center gap-2 text-sm text-neutral-600">
+                                <MetodoIcon className="h-5 w-5 text-[#fdca00]" />
+                                {metodo.helper}
+                              </p>
+                              <span className="sr-only">Seleccionar {metodo.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </fieldset>
+
+                    <label className="flex flex-col gap-2 text-sm font-semibold text-neutral-800" htmlFor="nota-pedido">
+                      Nota para recepción (opcional)
+                      <textarea
+                        id="nota-pedido"
+                        className="min-h-[80px] rounded-lg border border-neutral-300 px-4 py-3 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-[#fdca00] focus:outline-none"
+                        placeholder="Ej: sin azúcar, agregar hielo, entregar en sala Norte"
+                        value={nota}
+                        onChange={(event) => setNota(event.target.value)}
+                        maxLength={200}
+                      />
+                    </label>
+
+                    <div className="flex flex-col gap-2 rounded-xl border border-neutral-200 bg-neutral-50 p-4 text-xs text-neutral-500">
+                      <span className="text-sm font-semibold text-neutral-800">Antes de confirmar</span>
+                      <p>
+                        Revisá la cantidad y el método de pago. Si elegís Mercado Pago te redirigimos al link seguro. Si pagás en efectivo, abonás al retirar en recepción.
+                      </p>
+                    </div>
+
+                    <button
+                      className="inline-flex items-center justify-center gap-2 rounded-lg bg-neutral-900 px-5 py-3 text-base font-semibold text-white transition hover:bg-neutral-800"
+                      type="submit"
+                    >
+                      Confirmar pedido
+                      <FaArrowRight className="h-4 w-4" />
+                    </button>
+                  </form>
+                ) : (
+                  <div className="flex flex-col items-center gap-4">
+                    <p className="text-sm text-neutral-600">Iniciá sesión para completar tu pedido.</p>
+                    <button
+                      className="inline-flex items-center gap-2 rounded-lg bg-[#fdca00] px-6 py-3 text-base font-semibold text-neutral-900 shadow-[0_10px_40px_-10px_rgba(253,202,0,0.6)] transition hover:bg-[#f1be00]"
+                      onClick={() => signIn()}
+                    >
+                      Iniciar sesión
+                      <FaArrowRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {mensaje && (
-              <div className="mt-4 text-blue-700 w-full text-center">{mensaje}</div>
+              <div className="border-t border-neutral-200 bg-neutral-50 px-8 py-4 text-center text-sm text-neutral-600">
+                {mensaje}
+              </div>
             )}
           </div>
         </div>

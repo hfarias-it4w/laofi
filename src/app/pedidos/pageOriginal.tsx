@@ -3,7 +3,7 @@
 "use client";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 type Pedido = {
   _id: string;
@@ -28,7 +28,7 @@ export default function PedidosPage() {
     producto: string;
     cantidad: number;
     precio: number;
-  }>({ productos: [], producto: '', cantidad: 1, precio: 0 });
+  }>({ productos: [], producto: "", cantidad: 1, precio: 0 });
   const [enviando, setEnviando] = useState(false);
 
   // Handler para agregar producto al pedido
@@ -55,10 +55,25 @@ export default function PedidosPage() {
     }));
   }
 
+  const fetchPedidos = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/pedidos", { credentials: "same-origin" });
+      if (!res.ok) throw new Error("Error al cargar pedidos");
+      const data = await res.json();
+      setPedidos(data);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Error al cargar pedidos";
+      setError(message);
+    }
+    setLoading(false);
+  }, []);
+
   // Handler para enviar el pedido
   const handleCrearPedido = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (nuevoPedido.productos.length === 0) return alert('Agrega al menos un producto');
+    if (nuevoPedido.productos.length === 0) return alert("Agrega al menos un producto");
     setEnviando(true);
     setError("");
     try {
@@ -68,40 +83,28 @@ export default function PedidosPage() {
         body: JSON.stringify({ productos: nuevoPedido.productos })
       });
       if (!res.ok) throw new Error("Error al crear pedido");
-      setNuevoPedido({ productos: [], producto: '', cantidad: 1, precio: 0 });
+      setNuevoPedido({ productos: [], producto: "", cantidad: 1, precio: 0 });
       await fetchPedidos();
-    } catch (e: any) {
-      setError(e.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Error al crear pedido";
+      setError(message);
+    } finally {
+      setEnviando(false);
     }
-    setEnviando(false);
   };
 
   useEffect(() => {
     if (status === "authenticated") fetchPedidos();
     if (status === "unauthenticated") router.replace("/login?callbackUrl=/pedidos");
-  }, [status]);
-
-  async function fetchPedidos() {
-    setLoading(true);
-    setError("");
-    try {
-      const res = await fetch("/api/pedidos", { credentials: "same-origin" });
-      if (!res.ok) throw new Error("Error al cargar pedidos");
-      const data = await res.json();
-      setPedidos(data);
-    } catch (e: any) {
-      setError(e.message);
-    }
-    setLoading(false);
-  }
+  }, [status, fetchPedidos, router]);
 
   // Acciones admin: editar/eliminar (solo UI, no implementado backend)
-  function handleEdit(_id: string) {
-    alert("Funcionalidad de edición no implementada");
+  function handleEdit(id: string) {
+    alert(`Funcionalidad de edición no implementada para ${id}`);
   }
-  async function handleDelete(_id: string) {
+  async function handleDelete(id: string) {
     if (!confirm("¿Eliminar pedido?")) return;
-    alert("Funcionalidad de eliminación no implementada");
+    alert(`Funcionalidad de eliminación no implementada para ${id}`);
   }
 
   if (status === "loading") {
@@ -116,7 +119,7 @@ export default function PedidosPage() {
       {error && <div className="text-red-600 mb-4">{error}</div>}
 
       {/* Sección para crear pedido (solo para usuarios normales) */}
-      {user.role === "user" || user.role === "admin" && (
+      {(user.role === "user" || user.role === "admin") && (
         <div className="mb-8 border rounded p-4 bg-gray-50">
           <h2 className="text-lg font-semibold mb-2">Crear nuevo pedido</h2>
           <form onSubmit={handleCrearPedido} className="space-y-2">
@@ -126,7 +129,7 @@ export default function PedidosPage() {
                 placeholder="Producto"
                 className="border p-1 rounded w-1/3"
                 value={nuevoPedido.producto}
-                onChange={e => setNuevoPedido(p => ({ ...p, producto: e.target.value }))}
+                onChange={(event) => setNuevoPedido((p) => ({ ...p, producto: event.target.value }))}
                 required
               />
               <input
@@ -135,7 +138,7 @@ export default function PedidosPage() {
                 placeholder="Cantidad"
                 className="border p-1 rounded w-1/4"
                 value={nuevoPedido.cantidad}
-                onChange={e => setNuevoPedido(p => ({ ...p, cantidad: Number(e.target.value) }))}
+                onChange={(event) => setNuevoPedido((p) => ({ ...p, cantidad: Number(event.target.value) }))}
                 required
               />
               <input
@@ -144,7 +147,7 @@ export default function PedidosPage() {
                 placeholder="Precio"
                 className="border p-1 rounded w-1/4"
                 value={nuevoPedido.precio}
-                onChange={e => setNuevoPedido(p => ({ ...p, precio: Number(e.target.value) }))}
+                onChange={(event) => setNuevoPedido((p) => ({ ...p, precio: Number(event.target.value) }))}
                 required
               />
               <button type="button" className="bg-blue-600 text-white px-3 rounded" onClick={handleAddProducto}>
@@ -190,7 +193,7 @@ export default function PedidosPage() {
             </tr>
           </thead>
           <tbody>
-            {pedidos.map((p, idx) => (
+                {pedidos.map((p) => (
               <tr key={p._id}>
                 {user.role === "admin" && (
                   <td className="p-2 border">{p.user?.name || p.user?.email || "-"}</td>

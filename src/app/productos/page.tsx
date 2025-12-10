@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -102,6 +103,21 @@ export default function ProductosAdmin() {
     </div>
   );
 
+  if (user?.role !== "admin") {
+    return (
+      <div className="flex flex-col items-center mt-10">
+        <div className="text-red-600 text-4xl mb-6"><BsFillExclamationOctagonFill /></div>
+        <div className="text-red-600 text-xl mb-6">No tenés permisos para administrar productos.</div>
+        <button
+          className="bg-[#13B29F] hover:bg-[#119e8d] text-white rounded-xl py-3 px-6 text-lg font-semibold transition-colors"
+          onClick={() => router.push("/")}
+        >
+          Volver al inicio
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col items-center flex-grow py-4 px-4 bg-white min-h-screen">
       <h1 className="text-2xl font-bold text-[#3A3A3A] mb-2">Administrador de Productos</h1>
@@ -191,7 +207,14 @@ export default function ProductosAdmin() {
                   <td className="p-3 border">{product.description}</td>
                   <td className="p-3 border">
                     {product.image ? (
-                      <img src={product.image} alt="img" className="w-10 h-10 object-cover rounded" />
+                      <Image
+                        src={product.image}
+                        alt={product.name}
+                        width={40}
+                        height={40}
+                        className="h-10 w-10 rounded object-cover"
+                        unoptimized
+                      />
                     ) : (
                       <span className="text-gray-400">Sin imagen</span>
                     )}

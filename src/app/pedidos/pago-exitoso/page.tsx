@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import React from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -34,7 +35,7 @@ export default function PagoExitoso() {
             Acercate a recepción para que podamos preparar tu pedido.<br /><br />
             ¡Gracias!
           </p>
-          <a href="/" className="mt-4 text-[#13B29F] hover:underline font-semibold">Volver al inicio</a>
+          <Link href="/" className="mt-4 font-semibold text-[#13B29F] hover:underline">Volver al inicio</Link>
         </div>
       </div>
     </div>

@@ -4,9 +4,11 @@ import "@testing-library/jest-dom";
 import LoginPage from "../page";
 import { signIn } from "next-auth/react";
 
+const pushMock = jest.fn();
+
 // Mock next/navigation for router
 jest.mock("next/navigation", () => ({
-  useRouter: () => ({ push: jest.fn() })
+  useRouter: () => ({ push: pushMock })
 }));
 
 // Mock next-auth for session y signIn
@@ -80,8 +82,7 @@ describe("LoginPage", () => {
   });
   it("realiza login correcto y redirige", async () => {
     // Mock signIn para simular login exitoso
-    const pushMock = jest.fn();
-    jest.spyOn(require("next/navigation"), "useRouter").mockReturnValue({ push: pushMock });
+    pushMock.mockReset();
     (signIn as jest.Mock).mockImplementation(() => Promise.resolve({ error: null }));
 
     render(<LoginPage />);
@@ -96,6 +97,7 @@ describe("LoginPage", () => {
   });
 
   it("muestra error en login incorrecto", async () => {
+    pushMock.mockReset();
     // Mock signIn para simular login fallido
     (signIn as jest.Mock).mockImplementation(() => Promise.resolve({ error: "Credenciales incorrectas" }));
 

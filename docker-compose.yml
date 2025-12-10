@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: laofi-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+      MONGO_INITDB_DATABASE: laofi
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - laofi-network
+
+  nextapp:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: laofi-nextapp
+    restart: unless-stopped
+    ports:
+      - "3010:3000"
+    environment:
+      - NODE_ENV=development
+      - MONGODB_URI=mongodb://admin:admin123@mongodb:27017/laofi?authSource=admin
+      - NEXTAUTH_URL=http://localhost:3010
+      - NEXTAUTH_SECRET=Q2FzYXNhbG9zQ29kaWdvczEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MA==
+      - MERCADOPAGO_ACCESS_TOKEN=${MERCADOPAGO_ACCESS_TOKEN}
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - mongodb
+    networks:
+      - laofi-network
+    command: npm run dev
+
+volumes:
+  mongodb_data:
+
+networks:
+  laofi-network:
+    driver: bridge

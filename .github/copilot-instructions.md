@@ -1,60 +1,21 @@
-<!-- Use this file to provide workspace-specific custom instructions to Copilot. For more details, visit https://code.visualstudio.com/docs/copilot/copilot-customization#_use-a-githubcopilotinstructionsmd-file -->
+# Copilot Instructions for La Ofi
 
-# Instrucciones para Copilot
-
-Aplicación móvil para pedidos de café en La Ofi
-
-Requerimientos funcionales y técnicos
-1. Objetivo General
-Crear una aplicación móvil para clientes registrados de La Ofi (coworkers y oficinas privadas) que permita:
-•	Comprar café directamente desde el celular
-•	Realizar el pago con Mercado Pago, MODO o efectivo
-•	Notificar automáticamente el pedido a la recepción para su preparación
-2. Características Funcionales
-2.1 Autenticación de personas usuarias
-•	Inicio de sesión con correo electrónico y contraseña
-•	Alta y validación de personas usuarias por parte de la administración de La Ofi (no pública)
-2.2 Pantalla de Inicio
-•	Bienvenida personalizada (nombre de la persona usuaria)
-•	Acceso directo a “Pedir Café”
-•	Acceso al historial de pedidos
-2.3 Menú de Cafetería
-•	Solo muestra los productos que puede preparar la máquina de café automática Central de Café
-•	Ejemplos de productos:
-•	Espresso
-•	Lungo
-•	Capuccino
-•	Cortado
-•	Latte
-Cada producto incluye:
-Imagen (opcional)
-Descripción
-Precio
-Botón "Agregar al carrito"
-2.4 Carrito y Confirmación
-•	Resumen de productos seleccionados
-•	Opción de agregar comentarios (“sin azúcar”, “doble”, etc.)
-•	Selección de método de pago:
-o	Mercado Pago (link directo)
-o	MODO (link directo)
-o	Efectivo (se paga al retirar)
-2.5 Confirmación y Notificación
-•	Al confirmar el pedido:
-o	Registro en el backend
-o	Notificación automática a la recepción
-•	Opciones de notificación:
-o	Interfaz web en la PC de recepción (Windows), con alerta sonora y visual
-2.6 Historial de la persona usuaria
-•	Listado de pedidos anteriores
-•	Opción de “Repetir pedido”
-3. Notificaciones para Recepción
-Aplicación Web de Recepción
-•	Interfaz web en tiempo real
-•	Vista en pantalla de pedidos entrantes
-•	Alerta sonora 
-•	Opción de “marcar como preparado”
-5. Roles de personas usuarias
-Rol: Cliente
-Funcionalidad del rol Cliente: Hacer pedidor, ver historial de pedidos
-Rol: Admin 
-Funcionalidad del rol Admin: Ver y administrar pedidos, gestionar usuarios, estadísticas
+- **Product scope**: Next.js 15 App Router project that serves marketing + authenticated dashboards to pedir café en La Ofi; focus on the web app under `src/app`, not a mobile build.
+- **Auth & roles**: Credentials login wired in `src/lib/authOptions.ts`; bcrypt hashes, JWT sessions, and `session.user.role` toggles admin vs coworker behavior. `middleware.ts` enforces login by redirecting to `/login`.
+- **Database access**: MongoDB via `src/lib/mongodb.ts` with global caching. Always call `await dbConnect()` before touching Mongoose models in API routes.
+- **Data models**: `src/models/Product.ts`, `src/models/Pedido.ts`, `src/models/User.ts` define schema fields used across API + UI. Pedido schema stores productos `{nombre, cantidad, precio}`, `metodoPago`, `estado`, `comentarios`.
+- **API routes**: App Router handlers live in `src/app/api/**/route.ts`. Examples: `api/pedidos` for CRUD + role checks, `api/productos` for admin menu management, `api/clientes` for admin-only user admin, `api/register` for self-service signup, `api/contact` for marketing form.
+- **Pedidos flow**: `src/app/pedidos/realizar/page.tsx` fetches productos, applies 10% discount when `metodoPago === "efectivo"`, and posts to `/api/pedidos`. Successful pedidos redirect to `/pedidos/pedido-exitoso` and trigger admin socket notifications.
+- **Mercado Pago**: `/api/mercado-pago/create-preference` creates checkout preferences; needs `MERCADOPAGO_ACCESS_TOKEN` (or `MP_ACCESS_TOKEN`) and `NEXT_PUBLIC_BASE_URL`. Webhook at `/api/mercado-pago/webhook` fetches payment status and updates pedidos by `external_reference`.
+- **Realtime notifications**: Socket.IO server bootstrapped in `src/pages/api/socketio.ts` + helper in `src/lib/socketServer.ts`; client hook `src/lib/socketClient.ts`. `AdminNotificationListener` plays `/positive-notification.wav` when `nuevo-pedido` arrives for admins.
+- **UI composition**: `src/app/layout.tsx` (client) wraps pages in `AuthProvider` (`SessionProvider`), conditionally renders header/footer for non-marketing routes, and exposes navigation tailored by role.
+- **Testing**: `npm test` runs Jest + Testing Library (see `jest.config.js`); current coverage centers on `src/app/login/page.tsx` behavior in `src/app/login/__tests__/Login.test.tsx`.
+- **Seeding & scripts**: `npm run seed:products` (uses `scripts/seed-products.ts`) upserts canonical café menú; requires `MONGODB_URI` configured.
+- **Environment**: Essential vars include `NEXTAUTH_SECRET` or `AUTH_SECRET`, `MONGODB_URI`, Mercado Pago token, `CONTACT_FORM_RECIPIENT` + SMTP settings for email, `NEXTAUTH_URL` when deployed.
+- **Dev setup**: Local dev with `npm run dev` at :3000, or `docker compose up --build` to run Next.js + Mongo (`nextapp` mapped to :3010 with sample envs). Remember to install deps with `npm install` before running containers.
+- **Styling**: App uses Tailwind 4 (PostCSS preset) plus custom CSS in `src/app/globals.css`; UI leans on gradient cards and iconography via `react-icons`.
+- **Sockets in components**: When adding admin-only realtime features, guard hooks with `session?.user?.role === "admin"` to avoid connecting sockets for clientes.
+- **Forms & validation**: Email sanitization handled in `src/app/api/contact/route.ts` via `sanitizeHtml`; follow similar patterns for new public forms.
+- **Middleware & routing**: `PUBLIC_PATHS` in `middleware.ts` defines unauthenticated access. Update that list if adding new public marketing routes; avoid breaking static asset access.
+- **Deployment considerations**: `next.config.ts` currently empty; add only necessary tweaks. Production email sending requires valid SMTP env; in non-production, `/api/contact` returns preview JSON instead of sending.
+- **Reference data**: Marketing landing content (e.g., `/` hero) uses temporary placeholder images served from localhost; replace with production URLs before launch.

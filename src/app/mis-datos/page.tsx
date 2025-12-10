@@ -4,11 +4,16 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { BsFillExclamationOctagonFill } from "react-icons/bs";
 
+type SessionUser = {
+  _id?: string;
+  name?: string | null;
+  email?: string | null;
+};
 
 export default function MisDatos() {
   const router = useRouter();
   const { data: session, update } = useSession();
-  const user = session?.user;
+  const user = session?.user as SessionUser | undefined;
   const [form, setForm] = useState({
     _id: "",
     name: "",
@@ -16,16 +21,15 @@ export default function MisDatos() {
     password: ""
   });
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (user) {
       setForm({
-        _id: (user as any)._id || "",
-        name: user.name || "",
-        email: user.email || "",
+        _id: user._id || "",
+        name: user.name ?? "",
+        email: user.email ?? "",
         password: ""
       });
     }
@@ -35,7 +39,6 @@ export default function MisDatos() {
     e.preventDefault();
     setLoading(true);
     setError("");
-    setSuccess("");
     try {
       const res = await fetch("/api/clientes", {
         method: "PUT",
@@ -43,14 +46,14 @@ export default function MisDatos() {
         body: JSON.stringify({ _id: form._id, name: form.name, email: form.email, password: form.password })
       });
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Error al actualizar datos");
+        const data = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(data?.error || "Error al actualizar datos");
       }
-      setSuccess("Datos actualizados correctamente");
       setShowModal(true);
       if (update) await update();
-    } catch (e: any) {
-      setError(e.message);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error al actualizar datos";
+      setError(message);
     } finally {
       setLoading(false);
     }

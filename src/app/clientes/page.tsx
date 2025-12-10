@@ -1,12 +1,20 @@
 "use client";
 
+import Image from "next/image";
 import { useSession } from "next-auth/react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+
+type Cliente = {
+  _id: string;
+  name: string;
+  email: string;
+  role: "user" | "admin";
+};
 
 export default function ClientesAdmin() {
   const { data: session, status } = useSession();
   const user = session?.user as { role?: string } | undefined;
-  const [clientes, setClientes] = useState<any[]>([]);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({
@@ -20,25 +28,27 @@ export default function ClientesAdmin() {
   const [editMode, setEditMode] = useState(false);
 
   // Obtener clientes
-  const fetchClientes = async () => {
+  const fetchClientes = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const res = await fetch("/api/clientes");
       if (!res.ok) throw new Error("Error al obtener usuarios");
-      const data = await res.json();
+      const data = (await res.json()) as Cliente[];
       setClientes(data);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error al obtener usuarios";
+      setError(message);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    if (user?.role === "admin") fetchClientes();
-    // eslint-disable-next-line
-  }, [user]);
+    if (user?.role === "admin") {
+      void fetchClientes();
+    }
+  }, [fetchClientes, user?.role]);
 
   // Alta o edición
   const handleSubmit = async (e: React.FormEvent) => {
@@ -62,14 +72,15 @@ export default function ClientesAdmin() {
         });
       }
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Error en la operación");
+        const err = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(err?.error || "Error en la operación");
       }
       setForm({ _id: "", name: "", email: "", role: "user", password: "" });
       setEditMode(false);
-      fetchClientes();
-    } catch (e: any) {
-      setError(e.message);
+      void fetchClientes();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error en la operación";
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -87,19 +98,20 @@ export default function ClientesAdmin() {
         body: JSON.stringify({ _id })
       });
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Error al eliminar");
+        const err = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(err?.error || "Error al eliminar");
       }
-      fetchClientes();
-    } catch (e: any) {
-      setError(e.message);
+      void fetchClientes();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error al eliminar";
+      setError(message);
     } finally {
       setLoading(false);
     }
   };
 
   // Editar
-  const handleEdit = (cliente: any) => {
+  const handleEdit = (cliente: Cliente) => {
     setForm({ ...cliente, password: "" });
     setEditMode(true);
   };
@@ -114,7 +126,7 @@ export default function ClientesAdmin() {
   return (
     <div className="flex flex-col items-center flex-grow py-4 px-4 bg-white min-h-screen">
       {/* Logo laofi en el centro */}
-      <img src="/logolaofi.svg" alt="Logo Laofi" className="h-20 w-auto mb-6 mt-10" />
+      <Image src="/logolaofi.svg" alt="Logo Laofi" width={120} height={120} className="mb-6 mt-10 h-20 w-auto" />
       <h1 className="text-2xl font-bold text-[#3A3A3A] mb-2">Administrador de Clientes</h1>
       <p className="mb-6 text-gray-700">Aquí podrás gestionar los clientes del sistema.</p>
 

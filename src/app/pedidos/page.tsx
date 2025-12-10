@@ -64,7 +64,8 @@ export default function PedidosPage() {
         return;
       }
       fetch("/api/pedidos").then((res) => res.json()).then(setPedidos);
-    } catch (e) {
+    } catch (error: unknown) {
+      console.error("Error de red al eliminar el pedido", error);
       alert("Error de red al eliminar el pedido");
     }
   };

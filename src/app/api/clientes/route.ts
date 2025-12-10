@@ -1,20 +1,20 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "../auth/[...nextauth]/route";
+import { authOptions } from "@/lib/authOptions";
 import { User } from "@/models/User";
 import { dbConnect } from "@/lib/mongodb";
 
 // Helper para verificar admin
-async function isAdmin(req: NextRequest) {
+async function isAdmin() {
   const session = await getServerSession(authOptions);
   const user = session?.user as { role?: string } | undefined;
   return user?.role === "admin";
 }
 
 // GET: Obtener todos los usuarios
-export async function GET(req: NextRequest) {
-  if (!(await isAdmin(req))) {
+export async function GET() {
+  if (!(await isAdmin())) {
     return NextResponse.json({ error: "Acceso denegado" }, { status: 403 });
   }
   await dbConnect();
@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
 
 // PUT: Editar usuario (requiere body: { _id, ...campos })
 export async function PUT(req: NextRequest) {
-  if (!(await isAdmin(req))) {
+  if (!(await isAdmin())) {
     return NextResponse.json({ error: "Acceso denegado" }, { status: 403 });
   }
   await dbConnect();
@@ -44,7 +44,7 @@ export async function PUT(req: NextRequest) {
 
 // DELETE: Eliminar usuario (requiere body: { _id })
 export async function DELETE(req: NextRequest) {
-  if (!(await isAdmin(req))) {
+  if (!(await isAdmin())) {
     return NextResponse.json({ error: "Acceso denegado" }, { status: 403 });
   }
   await dbConnect();
