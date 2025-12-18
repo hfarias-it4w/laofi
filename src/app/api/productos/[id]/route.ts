@@ -12,7 +12,7 @@ export async function PUT(req: NextRequest, context: unknown) {
     { new: true }
   );
   if (!product) {
-    return NextResponse.json({ message: "Producto no encontrado" }, { status: 404 });
+    return NextResponse.json({ message: "El producto no fue encontrado" }, { status: 404 });
   }
   return NextResponse.json(product);
 }
@@ -22,7 +22,7 @@ export async function DELETE(_req: NextRequest, context: unknown) {
   await dbConnect();
   const product = await Product.findByIdAndDelete(params.id);
   if (!product) {
-    return NextResponse.json({ message: "Producto no encontrado" }, { status: 404 });
+    return NextResponse.json({ message: "El producto no fue encontrado" }, { status: 404 });
   }
-  return NextResponse.json({ message: "Producto eliminado" });
+  return NextResponse.json({ message: "El producto fue eliminado" });
 }
