@@ -1,7 +1,6 @@
-
 # Next.js + NextAuth.js
 
-Este proyecto es una app Next.js con autenticación de usuarios usando NextAuth.js.
+Este proyecto es una app Next.js con autenticación de usuarios usando NextAuth.js, Se usa vercel para algo.
 
 ## Autenticación
 
