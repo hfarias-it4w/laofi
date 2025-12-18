@@ -1,8 +1,9 @@
 import { dbConnect } from "@/lib/mongodb";
 import { Product } from "@/models/Product";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, context: unknown) {
+  const { params } = context as { params: { id: string } };
   await dbConnect();
   const { name, price, description, image } = await req.json();
   const product = await Product.findByIdAndUpdate(
@@ -16,7 +17,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   return NextResponse.json(product);
 }
 
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: NextRequest, context: unknown) {
+  const { params } = context as { params: { id: string } };
   await dbConnect();
   const product = await Product.findByIdAndDelete(params.id);
   if (!product) {

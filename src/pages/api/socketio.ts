@@ -1,8 +1,8 @@
 // src/pages/api/socketio.ts
-import type { NextApiRequest, NextApiResponse } from "next";
-import { getSocketServer } from "@/lib/socketServer";
+import type { NextApiRequest } from "next";
+import { getSocketServer, type NextApiResponseWithSocket } from "@/lib/socketServer";
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
+export default function handler(req: NextApiRequest, res: NextApiResponseWithSocket) {
   getSocketServer(res);
   res.end();
 }
